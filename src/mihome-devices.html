@@ -1,0 +1,47 @@
+<script type="text/markdown" data-help-name="mihome-devices">
+List devices
+
+if `msg.payload` was passed, then upon completion the list of "devices" on the configuration node will be updated.
+
+### Inputs
+
+: *payload* (object) : can be used to pass an array of device objects.
+
+
+### Outputs
+
+: payload (object) : List devices
+
+### Details
+
+`Config` - Configuration node.
+
+`Name` - Name node.
+</script>
+<script type="text/html" data-template-name="mihome-devices">
+	<div class="form-row">
+		<label for="node-input-settings"><i class="fa fa-cog"></i> Config</label>
+		<input id="node-input-settings" />
+	</div>
+	<div class="form-row">
+		<label for="node-input-name"><i class="fa fa-pencil"></i> Name</label>
+		<input type="text" id="node-input-name" />
+	</div>
+</script>
+<script type="text/javascript">
+	RED.nodes.registerType('mihome-devices', {
+		category: 'MiHome',
+		defaults: {
+			settings: { value: null, required: true, type: 'mihome-config' },
+			name: { value: '' }
+		},
+		icon: 'font-awesome/fa-list',
+		inputs: 1,
+		outputs: 1,
+		color: '#00BC9C',
+		paletteLabel: 'Devices',
+		label: function() {
+			return this.name || 'Devices';
+		}
+	});
+</script>
