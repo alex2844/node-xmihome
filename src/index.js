@@ -199,7 +199,7 @@ class MiHome extends EventEmitter {
 		if (this.type === 'web')
 			return this.request('/home/device_list', {}, this.credentials.country).then(({ result }) => {
 				return result.list.filter(({ localip, isOnline}) => (localip && isOnline)).map(({ did, token, localip, name, model }) => ({
-					id: +did,
+					id: did,
 					address: localip,
 					token, name, model
 				}));
@@ -209,6 +209,7 @@ class MiHome extends EventEmitter {
 				const browser = miio.browse();
 				const devices = [];
 				browser.on('available', reg => {
+					reg.id = (reg.id||'').toString();
 					if (reg.id && !reg.token)
 						reg.token = tokens?.find(device => (device.id === reg.id))?.token;
 					devices.push(reg);
@@ -236,8 +237,10 @@ class MiHome extends EventEmitter {
 		}else if (address && token) {
 			const conn = await miio.device({ address, token });
 			const device = {
-				id, address, token,
-				model: conn.miioModel
+				address, token,
+				port: conn.handle.api.port,
+				id: (conn.handle.api.id||'').toString(),
+				model: conn.handle.api.model
 			};
 			if (device) {
 				if (device.model)
