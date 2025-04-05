@@ -19,11 +19,12 @@ function isDbusRequired() {
 	return false;
 }
 
-if (isDbusRequired()){
+if (isDbusRequired()) {
 	if (!fs.existsSync(path.join(__dirname, 'node_modules', 'dbus-next'))) {
 		try {
-			console.log(`Installing dbus-next...`);
-			execSync(`npm install dbus-next@${pkg.conditionalDependencies?.['dbus-next']} --no-save`, { stdio: 'inherit' });
+			const pm = process.versions?.bun ? 'bun' : 'npm';
+			console.log(`[${pm}] Installing dbus-next...`);
+			execSync(`${pm} install dbus-next@${pkg.conditionalDependencies?.['dbus-next']} --no-save`, { stdio: 'inherit' });
 		} catch (error) {
 			console.error('Failed to install dbus-next:', error);
 		}

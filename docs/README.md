@@ -18,11 +18,15 @@ Xiaomi, позволяя вам интегрировать устройства 
   * **Bluetooth:**  Управление Bluetooth LE устройствами (MAC-адрес + шаблон).
   * **Облако Xiaomi:** Управление через облако Xiaomi (логин/пароль + ID устройства).
 * **Автоматическое определение типа подключения:** Библиотека автоматически
-определяет тип подключения на основе предоставленных данных конфигурации.
-* **Обнаружение устройств:**
+определяет тип подключения для *отдельного* устройства на основе предоставленных
+данных конфигурации.
+* **Настраиваемое обнаружение устройств:**
+  * Получение списка устройств из облака Xiaomi (при наличии учетных данных).
   * Поиск MiIO устройств в локальной сети.
   * Сканирование Bluetooth LE устройств.
-  * Получение списка устройств из облака Xiaomi (при наличии учетных данных).
+  * **Выбор метода обнаружения:** Возможность указать, как именно искать устройства
+  (`cloud`, `miio`, `bluetooth` или комбинированный поиск по умолчанию)
+  через опцию `connectionType` в конфигурации.
 * **Управление устройствами:**
   * Чтение и запись свойств устройств.
   * Подписка на уведомления об изменении свойств в реальном времени.
@@ -46,12 +50,15 @@ Xiaomi, позволяя вам интегрировать устройства 
 
 ```bash
 npm install node-xmihome
+
+# bun install node-xmihome
+# bun ./node_modules/node-xmihome/install.js
 ```
 
 **Важно для пользователей Linux, использующих Bluetooth:**
 
-При первом запуске после установки, библиотека автоматически проверит наличие
-Bluetooth адаптера и установит `dbus-next` если это необходимо.
+При установке, библиотека автоматически проверит наличие Bluetooth адаптера и
+установит `dbus-next` если это необходимо.
 
 Если вы не являетесь пользователем root,  во время установки будет создан
 конфигурационный файл Bluetooth (`xmihome_bluetooth.conf`) в директории
@@ -77,49 +84,59 @@ sudo systemctl restart bluetooth
 import { XiaomiMiHome } from 'node-xmihome';
 
 async function main() {
-    const miHome = new XiaomiMiHome({
-        credentials: {
-            username: process.env.XIAOMI_USERNAME,
-            password: process.env.XIAOMI_PASSWORD,
-            country: 'sg'
-        },
-        logLevel: 'error'
+  const miHome = new XiaomiMiHome({
+    credentials: {
+      username: process.env.XIAOMI_USERNAME,
+      password: process.env.XIAOMI_PASSWORD,
+      country: 'sg'
+    },
+    connectionType: 'bluetooth',
+    logLevel: 'error'
+  });
+
+  try {
+    const devices = await miHome.getDevices({
+      timeout: 30000,
+      findCallback: (device, devices) => {
+        return true;
+      }
     });
+    console.log('Найденные устройства:', devices);
 
-    try {
-        const devices = await miHome.getDevices();
-        console.log('Найденные устройства:', devices);
+    if (devices.length === 0)
+      throw new Error('Device not found');
 
-        // Выберите устройство для управления
-        // (например, первое bluetooth устройство из списка)
-        const device = await miHome.getDevice(devices.filter(device => device.id.startsWith('blt.'))?.[0]);
+    // Выберите устройство для управления
+    const device = await miHome.getDevice(devices[0]);
 
-        // Подключитесь к устройству (тип подключения определится автоматически)
-        await device.connect();
-        const connectionType = device.connectionType;
-        console.log(`Подключено к устройству "${device.getName()}" через: ${connectionType}`);
+    // Подключитесь к устройству (тип подключения определится автоматически)
+    await device.connect();
+    console.log(`Подключено к устройству "${device.getName()}" через: ${device.connectionType}`);
 
-        // Получите текущие свойства устройства
-        const properties = await device.getProperties();
-        console.log('Текущие свойства:', properties);
+    // Получите текущие свойства устройства
+    const properties = await device.getProperties();
+    console.log('Текущие свойства:', properties);
 
-        // Установите новое значение свойства
-        if (!properties.on) {
-            await device.setProperty('on', true);
-            console.log('Устройство включено');
-        }
-
-        // Отключитесь от устройства
-        await device.disconnect();
-        console.log('Отключено от устройства');
-
-        // Отключаемся от bluetooth адаптера
-        if (connectionType === 'bluetooth')
-            miHome.bluetooth.destroy();
-
-    } catch (error) {
-        console.error('Ошибка:', error);
+    // Установите новое значение свойства
+    if (!properties.on) {
+      await device.setProperty('on', true);
+      console.log('Устройство включено');
     }
+
+    // Отключитесь от устройства
+    await device.disconnect();
+    console.log('Отключено от устройства');
+
+    // Отключаемся от bluetooth адаптера
+    if (connectionType === 'bluetooth')
+      miHome.bluetooth.destroy();
+
+  } catch (error) {
+    console.error('Ошибка:', error);
+  } finally {
+    // Освобождаем ресурсы
+    miHome.destroy();
+  }
 }
 
 main();
@@ -143,6 +160,21 @@ main();
   * `mac` (строка): MAC-адрес устройства (для Bluetooth подключения).
   * `model` (строка): Модель устройства (например, 'deerma.humidifier.jsq2w').
   * `name` (строка, необязательно): Имя устройства (для удобства).
+* **`connectionType` (строка, необязательно):** Определяет **способ обнаружения
+устройств** при вызове `getDevices()` и **тип подключения по умолчанию** при
+вызове `device.connect()` без явного указания типа.
+  * **При вызове `getDevices()`:**
+    * `'cloud'`: Искать устройства только в облаке Xiaomi (требуются `credentials`).
+    * `'miio'`: Искать устройства только через MiIO в локальной сети.
+    * `'bluetooth'`: Искать устройства только через Bluetooth.
+    * *Не указан (по умолчанию):* Если есть `credentials`, ищет в облаке.
+    Если `credentials` нет, выполняет комбинированный поиск MiIO + Bluetooth.
+  * **При вызове `device.connect()` без аргумента:** Используется как
+  предпочтительный тип подключения, если он соответствует данным устройства
+  (например, если `connectionType: 'miio'`, то у устройства должны
+  быть `address` и `token`).
+* **`logLevel` (строка, необязательно, по умолчанию `'none'`):**
+Подробнее см. раздел "Логирование".
 
 **Документация:**
 
@@ -161,14 +193,14 @@ main();
 * Предоставлены **понятные имена свойств**
 (например, `power`, `temperature`, `fan_level` вместо `2/1`, `3/7`, `2/5`).
 * Может быть реализована **специфическая логика управления** или обработки данных
-(как, например, в `yunmi.kettle.mjs` для аутентификации чайника).
+(как, например, в `yunmi.kettle.js` для аутентификации чайника).
 
 **Список устройств с оптимизированной поддержкой:**
 
 * Увлажнители воздуха Xiaomi Smart Humidifier 2
 * Датчики температуры и влажности Miaomiaoce Sensor HT.T8
 * Умные чайники Mi Smart Kettle
-    ... и другие устройства.
+* *... и другие устройства.*
 
 **Как добавить поддержку новых устройств:**
 
@@ -182,9 +214,9 @@ main();
 1. **Исследовать спецификацию вашего устройства:** Поищите информацию о MiIO
 протоколе или Bluetooth GATT сервисах и характеристиках, которые использует
 ваше устройство. [Miot-spec.org](https://miot-spec.org/) может быть полезным ресурсом.
-2. **Создать файл определения устройства:** Создайте новый файл `.mjs` в директории
+2. **Создать файл определения устройства:** Создайте новый файл `.js` в директории
 `lib/devices/`, основываясь на примере существующих файлов
-(например, `deerma.humidifier.jsq2w.mjs`).
+(например, `deerma.humidifier.jsq2w.js`).
 3. **Определить статические свойства:** Заполните `static name`, `static models`,
 и `static properties` в соответствии со спецификацией вашего устройства.
 4. **Отправить Pull Request:**  Если вы хотите поделиться своей работой с
@@ -199,11 +231,11 @@ main();
     * Для вывода детальной отладочной информации установите переменную
     окружения `NODE_DEBUG`:
 
-        ```bash
-        export NODE_DEBUG=xmihome
-        # или для Windows (cmd): set NODE_DEBUG=xmihome
-        # или для Windows (PowerShell): $env:NODE_DEBUG='xmihome'
-        ```
+      ```bash
+      export NODE_DEBUG=xmihome
+      # или для Windows (cmd): set NODE_DEBUG=xmihome
+      # или для Windows (PowerShell): $env:NODE_DEBUG='xmihome'
+      ```
 
     * Это включит вывод всех уровней логов (`debug`, `info`, `warn`, `error`)
     через встроенный механизм `util.debuglog`. Сообщения будут иметь префикс с
@@ -214,11 +246,11 @@ main();
     (`.info`, `.warn`, `.error`), передав опцию `logLevel` в
     конструктор `XiaomiMiHome`:
 
-        ```javascript
-        const miHome = new XiaomiMiHome({
-            logLevel: 'info'
-        });
-        ```
+      ```javascript
+      const miHome = new XiaomiMiHome({
+        logLevel: 'info'
+      });
+      ```
 
     * **`'none'` (по умолчанию):** Логи через `console` отключены.
     * **`'error'`:** Выводятся только ошибки (`console.error`).

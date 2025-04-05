@@ -1,34 +1,46 @@
 {
 	"name": "node-xmihome",
-	"version": "1.0.0",
 	"description": "A Node.js library for controlling Xiaomi devices integrated with the Mi Home app.",
-	"main": "lib/index.mjs",
+	"version": "1.0.0",
 	"type": "module",
+	"main": "lib/index.js",
 	"scripts": {
-		"test": "bun test.mjs",
-		"postinstall": "node install.mjs"
+		"postinstall": "node ./install.js"
 	},
 	"files": [
-		"nodes/", "lib/"
+		"lib/",
+		"install.js"
 	],
 	"keywords": [
-		"nodejs", "node-red", "javascript", "iot", "smart home", "automation", "mi", "mihome", "xiaomi", "bluetooth"
+		"nodejs",
+		"node-red",
+		"javascript",
+		"iot",
+		"smart home",
+		"automation",
+		"mi",
+		"mihome",
+		"xiaomi",
+		"bluetooth"
 	],
+	"license": "MIT",
 	"author": "https://github.com/alex2844",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/alex2844/node-xmihome.git"
 	},
-	"license": "MIT",
 	"dependencies": {
 		"miio": "^0.15.6"
+	},
+	"devDependencies": {
+		"node-red": "^4.0.9"
 	},
 	"conditionalDependencies": {
 		"dbus-next": "github:dcodeIO/node-dbus-next"
 	},
 	"overrides": {
-		"cross-spawn": "^7.0.6",
-		"mem": "^10.0.0",
-		"yargs-parser": "^21.1.1"
+		"cross-spawn": "7.0.6",
+		"mem": "10.0.0",
+		"yargs-parser": "21.1.1"
 	}
 }
