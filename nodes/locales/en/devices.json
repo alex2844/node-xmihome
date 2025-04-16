@@ -1,0 +1,15 @@
+{
+	"devices": {
+		"label": {
+			"settings": "Config",
+			"name": "Name",
+			"timeout": "Discovery Timeout"
+		},
+		"placeholder": {
+			"name": "Name"
+		},
+		"unit": {
+			"milliseconds": "ms"
+		}
+	}
+}

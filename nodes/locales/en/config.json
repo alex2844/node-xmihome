@@ -1,0 +1,22 @@
+{
+	"config": {
+		"label": {
+			"name": "Name",
+			"debug": "Enable debug",
+			"authentication": "Authentication",
+			"username": "Username",
+			"password": "Password",
+			"country": "Country",
+			"defaults": "Defaults",
+			"connectionType": "Default mode",
+			"connAuto": "Auto",
+			"connCloud": "Cloud",
+			"connMiio": "MiIO",
+			"connBluetooth": "Bluetooth"
+		},
+		"placeholder": {
+			"name": "Name",
+			"username": "Email / Phone / Xiaomi ID"
+		}
+	}
+}

@@ -1,0 +1,46 @@
+{
+	"device": {
+		"label": {
+			"settings": "Конфигурация",
+			"name": "Имя",
+			"device": "Идентификация устройства",
+			"source": "Источник",
+			"deviceSourceInput": "Конфигурация узла",
+			"deviceSourceDiscovered": "Обнаруженное устройство",
+			"deviceIdType": "Тип ID",
+			"deviceIdTypeFull": "Полный",
+			"deviceId": "ID Облака",
+			"deviceAddress": "IP Адрес",
+			"deviceMac": "MAC Адрес",
+			"deviceToken": "Токен",
+			"deviceTokenHint": "(Опционально)",
+			"deviceModel": "Модель",
+			"deviceModelHint": "(Важно!)",
+			"deviceModelHelp": "Модель помогает выбрать правильные элементы управления, особенно для Bluetooth.",
+			"discoveredDevice": "Устройство",
+			"discoveredDeviceConfig": "Сначала выберите конфигурацию.",
+			"discoveredDeviceLoading": "Загрузка устройств...",
+			"action": "Действие",
+			"actionGetAll": "Получить свойства",
+			"actionGet": "Получить свойство",
+			"actionSet": "Установить свойство",
+			"actionSubscribe": "Подписаться на свойство",
+			"actionUnsubscribe": "Отписаться от свойства",
+			"property": "Свойство",
+			"propertySourceInput": "Конфигурация узла",
+			"value": "Значение",
+			"output": "Вывод",
+			"topic": "Тема"
+		},
+		"placeholder": {
+			"name": "Имя",
+			"deviceId": "например, 123456789",
+			"deviceAddress": "например, 192.168.1.50",
+			"deviceMac": "XX:XX:XX:XX:XX:XX",
+			"deviceToken": "32-значная шестнадцатеричная строка",
+			"deviceModel": "например, deerma.humidifier.jsq2w",
+			"property": "например, power",
+			"topic": "Опциональная тема вывода"
+		}
+	}
+}

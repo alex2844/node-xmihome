@@ -127,10 +127,6 @@ async function main() {
     await device.disconnect();
     console.log('Отключено от устройства');
 
-    // Отключаемся от bluetooth адаптера
-    if (connectionType === 'bluetooth')
-      miHome.bluetooth.destroy();
-
   } catch (error) {
     console.error('Ошибка:', error);
   } finally {

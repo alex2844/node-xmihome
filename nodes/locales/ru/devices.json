@@ -1,0 +1,15 @@
+{
+	"devices": {
+		"label": {
+			"settings": "Конфигурация",
+			"name": "Имя",
+			"timeout": "Таймаут обнаружения"
+		},
+		"placeholder": {
+			"name": "Имя"
+		},
+		"unit": {
+			"milliseconds": "мс"
+		}
+	}
+}

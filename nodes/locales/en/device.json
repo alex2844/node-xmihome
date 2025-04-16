@@ -1,0 +1,45 @@
+{
+	"device": {
+		"label": {
+			"settings": "Config",
+			"name": "Name",
+			"device": "Device Identification",
+			"source": "Source",
+			"deviceSourceInput": "Node Config",
+			"deviceSourceDiscovered": "Discovered Device",
+			"deviceIdType": "ID Type",
+			"deviceIdTypeFull": "Full",
+			"deviceId": "Cloud ID",
+			"deviceAddress": "IP Address",
+			"deviceMac": "MAC Address",
+			"deviceToken": "Token",
+			"deviceTokenHint": "(Optional)",
+			"deviceModel": "Model",
+			"deviceModelHint": "(Important!)",
+			"deviceModelHelp": "Model helps select correct controls, especially for Bluetooth.",
+			"discoveredDevice": "Device",
+			"discoveredDeviceConfig": "Please select a config first.",
+			"discoveredDeviceLoading": "Loading devices...",
+			"action": "Action",
+			"actionGetAll": "Get Properties",
+			"actionSet": "Set Property",
+			"actionSubscribe": "Subscribe to Property",
+			"actionUnsubscribe": "Unsubscribe from Property",
+			"property": "Property",
+			"propertySourceInput": "Node Config",
+			"value": "Value",
+			"output": "Output",
+			"topic": "Topic"
+		},
+		"placeholder": {
+			"name": "Name",
+			"deviceId": "e.g., 123456789",
+			"deviceAddress": "e.g., 192.168.1.50",
+			"deviceMac": "XX:XX:XX:XX:XX:XX",
+			"deviceToken": "32 character hex string",
+			"deviceModel": "e.g., deerma.humidifier.jsq2w",
+			"property": "e.g., power",
+			"topic": "Optional output topic" 
+		}
+	}
+}

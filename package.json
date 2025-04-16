@@ -5,9 +5,18 @@
 	"type": "module",
 	"main": "lib/index.js",
 	"scripts": {
+		"docs": "bun ./.github/scripts/docs.js",
 		"postinstall": "node ./install.js"
 	},
+	"node-red": {
+		"nodes": {
+			"config": "nodes/config.js",
+			"devices": "nodes/devices.js",
+			"device": "nodes/device.js"
+		}
+	},
 	"files": [
+		"nodes/",
 		"lib/",
 		"install.js"
 	],
@@ -31,9 +40,6 @@
 	},
 	"dependencies": {
 		"miio": "^0.15.6"
-	},
-	"devDependencies": {
-		"node-red": "^4.0.9"
 	},
 	"conditionalDependencies": {
 		"dbus-next": "github:dcodeIO/node-dbus-next"

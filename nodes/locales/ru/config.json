@@ -1,0 +1,22 @@
+{
+	"config": {
+		"label": {
+			"name": "Имя",
+			"debug": "Включить отладку",
+			"authentication": "Аутентификация",
+			"username": "Имя пользователя",
+			"password": "Пароль",
+			"country": "Страна",
+			"defaults": "Настройки по умолчанию",
+			"connectionType": "Режим по умолчанию",
+			"connAuto": "Авто",
+			"connCloud": "Облако",
+			"connMiio": "MiIO",
+			"connBluetooth": "Bluetooth"
+		},
+		"placeholder": {
+			"name": "Имя",
+			"username": "Email / Phone / Xiaomi ID"
+		}
+	}
+}
