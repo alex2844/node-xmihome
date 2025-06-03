@@ -22,14 +22,14 @@ export default function(RED) {
 			const keys = ['id', 'name', 'address', 'mac', 'token', 'model'];
 			const device = RED.util.evaluateNodeProperty(this.config.device, this.config.deviceType, this, msg);
 			if (!device || (typeof device !== 'object'))
-                throw new Error('device is missing or not an object');
+				throw new Error('device is missing or not an object');
 			Object.keys(device).forEach(key => {
 				if (!keys.includes(key) || (device[key] == null) || (device[key] === ''))
 					delete device[key]
 			});
 			if (!device.id && !device.address && !device.mac)
 				throw new Error('device must contain at least id, address/token, or mac');
-            if (!device.model && device.mac && !device.name)
+			if (!device.model && device.mac && !device.name)
 				this.warn("device for Bluetooth is missing 'model', device might not work correctly without a specific class.");
 			return device;
 		};
