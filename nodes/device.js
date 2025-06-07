@@ -8,6 +8,7 @@ export default function(RED) {
 			this.config = config;
 			this.devices = new Map();
 			this.subscriptions = new Map();
+			this.connectionTimeouts = new Map();
 			this.on('input', this.#input.bind(this));
 			this.on('close', this.#close.bind(this));
 			this.status({});
@@ -45,15 +46,19 @@ export default function(RED) {
 		async #input(msg, send, done) {
 			let result;
 			let device;
+			this.status({ fill: 'blue', shape: 'dot', text: 'Getting device...' });
+			const topic = RED.util.evaluateNodeProperty(this.config.topic, this.config.topicType, this, msg);
+			const value = RED.util.evaluateNodeProperty(this.config.value, this.config.valueType, this, msg);
+			const property = RED.util.evaluateNodeProperty(this.config.property, this.config.propertyType, this, msg);
+			const deviceConfig = this.getDeviceConfig(msg);
+			const deviceKey = this.getDeviceId(deviceConfig);
+			if (this.connectionTimeouts.has(deviceKey)) {
+				clearTimeout(this.connectionTimeouts.get(deviceKey));
+				this.connectionTimeouts.delete(deviceKey);
+			}
 			try {
-				this.status({ fill: 'blue', shape: 'dot', text: 'Getting device...' });
-				const topic = RED.util.evaluateNodeProperty(this.config.topic, this.config.topicType, this, msg);
-				const value = RED.util.evaluateNodeProperty(this.config.value, this.config.valueType, this, msg);
-				const property = RED.util.evaluateNodeProperty(this.config.property, this.config.propertyType, this, msg);
 				if (!property || !['getProperties', 'getProperty', 'setProperty', 'subscribe', 'unsubscribe'].includes(this.config.action))
 					throw new Error('Property name is missing (configure node or provide msg.property)');
-				const deviceConfig = this.getDeviceConfig(msg);
-				const deviceKey = this.getDeviceId(deviceConfig);
 				if (this.devices.has(deviceKey)) {
 					device = this.devices.get(deviceKey);
 					this.debug(`Using existing device instance for key: ${deviceKey}`);
@@ -72,11 +77,11 @@ export default function(RED) {
 					case 'getProperties':
 					case 'getProperty': {
 						this.status({ fill: 'blue', shape: 'dot', text: `Getting ${property || 'all'}...` });
-						const payload = action === 'getProperties' ? await device.getProperties() : await device.getProperty(property);
+						const payload = this.config.action === 'getProperties' ? await device.getProperties() : await device.getProperty(property);
 						this.debug(`Got property/ies: ${JSON.stringify(payload)}`);
 						msg.payload = payload;
 						msg.text = 'Done';
-						if (action === 'getProperty') {
+						if (this.config.action === 'getProperty') {
 							msg.topic = topic || msg.topic || `property/${property}`;
 							if (payload && (typeof payload === 'object') && !Array.isArray(payload)) {
 								const keys = Object.keys(payload);
@@ -145,18 +150,22 @@ export default function(RED) {
 				msg.payload = err.message || 'Unknown error';
 				this.status({ fill: 'red', shape: 'ring', text: 'Error' });
 			} finally {
-				if (this.config.action !== 'subscribe') {
-					this.debug(`Disconnecting after action: ${action}`);
-					await device.disconnect().catch(err => {
-						this.error(`Error during post-action disconnect: ${err.message}`);
-					});
-				}
+				if (this.config.action !== 'subscribe')
+					this.connectionTimeouts.set(deviceKey, setTimeout(() => {
+						this.debug(`Auto-disconnecting device ${deviceKey} due to inactivity.`);
+						device.disconnect().catch(err => this.error(`Error during auto-disconnect for ${deviceKey}: ${err.message}`));
+						this.devices.delete(deviceKey);
+						this.connectionTimeouts.delete(deviceKey);
+					}, 30_000));
 			}
 			done(result);
 		};
 		async #close(removed, done) {
-			this.debug(`Node closing, cleaning up all active connections and subscriptions... (removed: ${!!removed})`);
 			const cleanupPromises = [];
+			this.debug(`Node closing, cleaning up all active connections and subscriptions... (removed: ${!!removed})`);
+			for (const timeoutId of this.connectionTimeouts.values()) {
+				clearTimeout(timeoutId);
+			}
 			for (const [key, device] of this.devices.entries()) {
 				this.debug(`Disconnecting device instance for key: ${key}`);
 				cleanupPromises.push(
@@ -169,8 +178,9 @@ export default function(RED) {
 			} catch (err) {
 				this.error('Error during connection cleanup on node close.');
 			}
-			this.devices.clear();
+			this.connectionTimeouts.clear();
 			this.subscriptions.clear();
+			this.devices.clear();
 			this.status({});
 			done();
 		};
