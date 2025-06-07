@@ -8,10 +8,6 @@ export default function(RED) {
 			this.config = config;
 			this.devices = new Map();
 			this.subscriptions = new Map();
-			console.log({
-				config: this.config,
-				settings: this.settings
-			});
 			this.on('input', this.#input.bind(this));
 			this.on('close', this.#close.bind(this));
 			this.status({});
@@ -47,6 +43,7 @@ export default function(RED) {
 			return (str.length > maxLength) ? str.slice(0, (maxLength - 3)) + '...' : str;
 		};
 		async #input(msg, send, done) {
+			let result;
 			let device;
 			try {
 				this.status({ fill: 'blue', shape: 'dot', text: 'Getting device...' });
@@ -111,12 +108,6 @@ export default function(RED) {
 						}else{
 							const callback = payload => {
 								this.debug(`Notification received for ${property}: ${JSON.stringify(value)}`);
-								// const notifyMsg = RED.util.cloneMessage(msg); // TODO: вспомнить зачем я вообще клонировал сообщение
-								// delete notifyMsg._msgid; // Удаляем старый ID
-								// notifyMsg.payload = payload;
-								// notifyMsg.topic = topic || msg.topic || `notify/${property}`;
-								// notifyMsg.device = dev;
-								// notifyMsg.property = property;
 								send({
 									_msgid: RED.util.generateId(),
 									payload, property,
@@ -126,18 +117,9 @@ export default function(RED) {
 								this.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
 							};
 							this.subscriptions.set(subscriptionKey, { device, property, callback });
-							// try {
-								await device.startNotify(property, callback);
-								// subscription.stopNotify = () => device.stopNotify(property);
-								this.log(`Successfully subscribed to ${property} for device ${deviceKey}`);
-								this.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
-							// } catch (err) {
-							// 	this.error(`Failed to subscribe to ${property}: ${err}`, msg);
-							// 	this.subscriptions.delete(subscriptionKey);
-							// 	this.status({ fill: "red", shape: "ring", text: "Subscribe failed" });
-							// 	done(err);
-							// 	return;
-							// }
+							await device.startNotify(property, callback);
+							this.log(`Successfully subscribed to ${property} for device ${deviceKey}`);
+							this.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
 						}
 						break;
 					};
@@ -156,16 +138,21 @@ export default function(RED) {
 						}
 					};
 				};
-				// if (this.config.action !== 'subscribe')
-				// 	await device.disconnect(); // TODO: а может всетаки не отключаться?
-				done();
 			} catch (err) {
+				result = err;
 				msg.error = err;
 				msg.code = err.code || 'unknown';
 				msg.payload = err.message || 'Unknown error';
 				this.status({ fill: 'red', shape: 'ring', text: 'Error' });
-				done(err);
+			} finally {
+				if (this.config.action !== 'subscribe') {
+					this.debug(`Disconnecting after action: ${action}`);
+					await device.disconnect().catch(err => {
+						this.error(`Error during post-action disconnect: ${err.message}`);
+					});
+				}
 			}
+			done(result);
 		};
 		async #close(removed, done) {
 			this.debug(`Node closing, cleaning up all active connections and subscriptions... (removed: ${!!removed})`);
