@@ -1,9 +1,12 @@
+import Device from '../lib/device.js';
+
 export default function(RED) {
-	RED.nodes.registerType('xmihome-device', class Device {
+	RED.nodes.registerType('xmihome-device', class DeviceNode {
 		constructor(config) {
 			RED.nodes.createNode(this, config);
 			this.settings = RED.nodes.getNode(config.settings);
 			this.config = config;
+			this.devices = new Map();
 			this.subscriptions = new Map();
 			console.log({
 				config: this.config,
@@ -18,23 +21,23 @@ export default function(RED) {
 				throw new Error('Client is not initialized. Check configuration.');
 			return this.settings.client;
 		};
-		getDevice(msg) {
-			const keys = ['id', 'name', 'address', 'mac', 'token', 'model'];
-			const device = RED.util.evaluateNodeProperty(this.config.device, this.config.deviceType, this, msg);
-			if (!device || (typeof device !== 'object'))
-				throw new Error('device is missing or not an object');
-			Object.keys(device).forEach(key => {
-				if (!keys.includes(key) || (device[key] == null) || (device[key] === ''))
-					delete device[key]
-			});
+		getDeviceConfig(msg) {
+			const deviceConfig = RED.util.evaluateNodeProperty(this.config.device, this.config.deviceType, this, msg);
+			if (!deviceConfig || (typeof deviceConfig !== 'object'))
+				throw new Error('Device configuration is missing or not an object');
+			const device = ['id', 'name', 'address', 'mac', 'token', 'model'].reduce((res, key) => {
+				if ((deviceConfig[key] != null) && (deviceConfig[key] !== ''))
+					res[key] = deviceConfig[key];
+				return res;
+			}, {});
 			if (!device.id && !device.address && !device.mac)
-				throw new Error('device must contain at least id, address/token, or mac');
+				throw new Error('Device configuration must contain at least id, address, or mac');
 			if (!device.model && device.mac && !device.name)
-				this.warn("device for Bluetooth is missing 'model', device might not work correctly without a specific class.");
+				this.warn("Device configuration for Bluetooth is missing 'model', device might not work correctly without a specific class.");
 			return device;
 		};
-		getDeviceKey(device) {
-			return device.mac || device.address || device.id || JSON.stringify(device);
+		getDeviceId(device) {
+			return Device.getDeviceId(device);
 		};
 		truncate(str, maxLength=20) {
 			if (!str || (typeof str === 'object'))
@@ -44,115 +47,117 @@ export default function(RED) {
 			return (str.length > maxLength) ? str.slice(0, (maxLength - 3)) + '...' : str;
 		};
 		async input(msg, send, done) {
+			let device;
 			try {
 				this.status({ fill: 'blue', shape: 'dot', text: 'Getting device...' });
-
 				const topic = RED.util.evaluateNodeProperty(this.config.topic, this.config.topicType, this, msg);
 				const value = RED.util.evaluateNodeProperty(this.config.value, this.config.valueType, this, msg);
 				const property = RED.util.evaluateNodeProperty(this.config.property, this.config.propertyType, this, msg);
 				if (!property || !['getProperties', 'getProperty', 'setProperty', 'subscribe', 'unsubscribe'].includes(this.config.action))
 					throw new Error("Property name is missing (configure node or provide msg.property)");
-
-				const dev = this.getDevice(msg);
-				const device = await this.client.getDevice(dev);
-				this.debug(`Got device instance: ${device.constructor.name}`);
-
-				// TODO: Оптимизировать - не подключаться каждый раз, если уже подключено.
-				// Пока простой вариант: всегда подключаемся.
+				const deviceConfig = this.getDeviceConfig(msg);
+				const deviceKey = this.getDeviceId(deviceConfig);
+				if (this.devices.has(deviceKey)) {
+					device = this.devices.get(deviceKey);
+					this.debug(`Using existing device instance for key: ${deviceKey}`);
+				} else {
+					device = await this.client.getDevice(deviceConfig);
+					this.devices.set(deviceKey, device);
+					this.debug(`Created and stored new device instance for key: ${deviceKey}`);
+				}
 				if (this.config.action !== 'unsubscribe') {
 					this.status({ fill: 'blue', shape: 'dot', text: `Connecting (${this.client.connectionType || 'auto'})...` });
 					await device.connect();
-					this.debug(`Device connected via ${device.connectionType}`);
+					this.status({ fill: 'green', shape: 'dot', text: `Connected: ${device.connectionType}` });
 				}
 				this.debug(`Action: ${this.config.action}, Property: ${property}`);
 				switch (this.config.action) {
-					case 'getProperties': {
-						this.status({ fill: 'blue', shape: 'dot', text: `Getting...` });
-						const payload = await device.getProperties();
-						this.debug(`Got property ${property}: ${JSON.stringify(payload)}`);
-						msg.payload = payload;
-						msg.topic = topic || msg.topic || `property/`;
-						send(msg);
-						this.status({ fill: 'green', shape: 'dot', text: 'Done' });
-						break;
-					};
+					case 'getProperties':
 					case 'getProperty': {
-						this.status({ fill: 'blue', shape: 'dot', text: `Getting ${property}...` });
-						const payload = await device.getProperty(property);
-						this.debug(`Got property ${property}: ${JSON.stringify(payload)}`);
+						this.status({ fill: 'blue', shape: 'dot', text: `Getting ${property || 'all'}...` });
+						const payload = action === 'getProperties' ? await device.getProperties() : await device.getProperty(property);
+						this.debug(`Got property/ies: ${JSON.stringify(payload)}`);
 						msg.payload = payload;
-						msg.topic = topic || msg.topic || `property/${property}`;
-						if (payload && (typeof payload === 'object') && !Array.isArray(payload)) {
-							const keys = Object.keys(payload);
-							if (keys.length > 3)
-								msg.text = `${keys.length} fields, includes: ${keys.slice(0, 2).join(', ')}...`;
-							else
-								msg.text = Object.entries(payload).map(([key, value]) => `${key}: ${this.truncate(value, 10)}`).join(' | ');
+						msg.text = 'Done';
+						if (action === 'getProperty') {
+							msg.topic = topic || msg.topic || `property/${property}`;
+							if (payload && (typeof payload === 'object') && !Array.isArray(payload)) {
+								const keys = Object.keys(payload);
+								if (keys.length > 3)
+									msg.text = `${keys.length} fields, includes: ${keys.slice(0, 2).join(', ')}...`;
+								else
+									msg.text = Object.entries(payload).map(([key, value]) => `${key}: ${this.truncate(value, 10)}`).join(' | ');
+							}else
+								msg.text = this.truncate(payload);
 						}else
-							msg.text = this.truncate(payload);
+							msg.topic = topic || msg.topic || `property/`;
 						send(msg);
-						this.status({ fill: 'green', shape: 'dot', text: (msg.text || 'Done') });
+						this.status({ fill: 'green', shape: 'dot', text: msg.text });
 						break;
 					};
 					case 'setProperty': {
-						this.status({ fill: "blue", shape: "dot", text: `Setting ${property}...` });
+						this.status({ fill: 'blue', shape: 'dot', text: `Setting ${property}...` });
 						this.debug(`Value to set for ${property}: ${JSON.stringify(value)}`);
 						await device.setProperty(property, value);
 						this.log(`Property ${property} set to ${JSON.stringify(value)} successfully.`);
 						this.status({ fill: 'green', shape: 'dot', text: 'Done' });
 					};
-					case 'subscribe': { // TODO: когда поднял чайник, и затем поставил, не произошло переподключение
-						this.status({ fill: "yellow", shape: "dot", text: `Subscribing to ${property}...` });
-						const deviceKey = this.getDeviceKey(dev);
+					case 'subscribe': {
+						this.status({ fill: 'yellow', shape: 'dot', text: `Subscribing to ${property}...` });
 						const subscriptionKey = `${deviceKey}_${property}`;
 						if (this.subscriptions.has(subscriptionKey)) {
 							this.warn(`Already subscribed to ${property} for device ${deviceKey}. Ignoring.`);
-							this.status({ fill: "yellow", shape: "ring", text: `Subscribed: ${property}` });
+							this.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
 						}else{
 							const callback = payload => {
 								this.debug(`Notification received for ${property}: ${JSON.stringify(value)}`);
-								const notifyMsg = RED.util.cloneMessage(msg);
-								delete notifyMsg._msgid; // Удаляем старый ID
-								notifyMsg.payload = payload;
-								notifyMsg.topic = topic || msg.topic || `notify/${property}`;
-								notifyMsg.device = dev;
-								notifyMsg.property = property;
-								send(notifyMsg);
-								this.status({ fill: "yellow", shape: "ring", text: `Subscribed: ${property}` });
+								// const notifyMsg = RED.util.cloneMessage(msg); // TODO: вспомнить зачем я вообще клонировал сообщение
+								// delete notifyMsg._msgid; // Удаляем старый ID
+								// notifyMsg.payload = payload;
+								// notifyMsg.topic = topic || msg.topic || `notify/${property}`;
+								// notifyMsg.device = dev;
+								// notifyMsg.property = property;
+								send({
+									_msgid: RED.util.generateId(),
+									payload, property,
+									device: deviceConfig,
+									topic: topic || msg.topic || `notify/${property}`
+								});
+								this.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
 							};
-
-							const subscriptionInfo = {
-								device, property, callback,
-								stopNotify: null
-							};
-							this.subscriptions.set(subscriptionKey, subscriptionInfo);
-
-							try {
+							this.subscriptions.set(subscriptionKey, { device, property, callback });
+							// try {
 								await device.startNotify(property, callback);
-								subscriptionInfo.stopNotify = async () => {
-									try {
-										await device.stopNotify(property);
-										this.log(`Successfully stopped notifications for ${property} on ${deviceKey}`);
-									} catch(stopErr) {
-										this.error(`Error stopping notifications for ${property} on ${deviceKey}: ${stopErr}`, msg);
-									}
-								};
+								// subscription.stopNotify = () => device.stopNotify(property);
 								this.log(`Successfully subscribed to ${property} for device ${deviceKey}`);
-								this.status({ fill: "yellow", shape: "ring", text: `Subscribed: ${property}` });
-							} catch(subError) {
-								this.error(`Failed to subscribe to ${property}: ${subError}`, msg);
-								this.subscriptions.delete(subscriptionKey);
-								this.status({ fill: "red", shape: "ring", text: "Subscribe failed" });
-								done(subError);
-								return;
-							}
+								this.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
+							// } catch (err) {
+							// 	this.error(`Failed to subscribe to ${property}: ${err}`, msg);
+							// 	this.subscriptions.delete(subscriptionKey);
+							// 	this.status({ fill: "red", shape: "ring", text: "Subscribe failed" });
+							// 	done(err);
+							// 	return;
+							// }
 						}
 						break;
 					};
-					// case 'unsubscribe': {} // TODO
+					case 'unsubscribe': {
+						this.status({ fill: "blue", shape: "dot", text: `Unsubscribing from ${property}...` });
+						const subscriptionKey = `${deviceKey}_${property}`;
+						if (this.subscriptions.has(subscriptionKey)) {
+							const subscription = this.subscriptions.get(subscriptionKey);
+							await subscription.device.stopNotify(subscription.property);
+							this.subscriptions.delete(subscriptionKey);
+							this.log(`Successfully unsubscribed from ${property} for device ${deviceKey}`);
+							this.status({ fill: "grey", shape: "ring", text: `Unsubscribed` });
+						} else {
+							this.warn(`Not subscribed to ${property} for device ${deviceKey}. Cannot unsubscribe.`);
+							this.status({});
+						}
+					};
 				};
-				if (this.config.action !== 'subscribe')
-					await device.disconnect();
+				// if (this.config.action !== 'subscribe')
+				// 	await device.disconnect(); // TODO: а может всетаки не отключаться?
 				done();
 			} catch (error) {
 				msg.error = error;
@@ -163,21 +168,21 @@ export default function(RED) {
 			}
 		};
 		async close() {
-			this.debug("Node closing, cleaning up subscriptions...");
+			this.debug("Node closing, cleaning up all active connections and subscriptions...");
 			const cleanupPromises = [];
-			for (const [key, subInfo] of this.subscriptions.entries()) {
-				this.debug(`Stopping subscription: ${key}`);
-				if (subInfo.stopNotify)
-					cleanupPromises.push(
-						subInfo.stopNotify().catch(err => this.error(`Error during cleanup stopNotify for ${key}: ${err}`))
-					);
+			for (const [key, device] of this.devices.entries()) {
+				this.debug(`Disconnecting device instance for key: ${key}`);
+				cleanupPromises.push(
+					device.disconnect().catch(err => this.error(`Error during cleanup disconnect for ${key}: ${err}`))
+				);
 			}
 			try {
 				await Promise.all(cleanupPromises);
-				this.log("All active subscriptions stopped.");
+				this.log("All active device connections closed.");
 			} catch (error) {
-				this.error("Error during subscription cleanup on node close.");
+				this.error("Error during connection cleanup on node close.");
 			}
+			this.devices.clear();
 			this.subscriptions.clear();
 			this.status({});
 		};

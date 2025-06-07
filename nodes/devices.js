@@ -1,5 +1,5 @@
 export default function(RED) {
-	RED.nodes.registerType('xmihome-devices', class Devices {
+	RED.nodes.registerType('xmihome-devices', class DevicesNode {
 		constructor(config) {
 			RED.nodes.createNode(this, config);
 			this.settings = RED.nodes.getNode(config.settings);

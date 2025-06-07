@@ -1,10 +1,10 @@
-import { XiaomiMiHome } from '../lib/index.js';
+import XiaomiMiHome from '../lib/index.js';
 
 const CACHE_TTL = 5 * 60 * 1000;
 const refreshPromises = new Map();
 
 export default function(RED) {
-	RED.nodes.registerType('xmihome-config', class Config {
+	RED.nodes.registerType('xmihome-config', class ConfigNode {
 		#client;
 		deviceCache = {
 			devices: [],
