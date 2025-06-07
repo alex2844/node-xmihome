@@ -12,8 +12,8 @@ export default function(RED) {
 				config: this.config,
 				settings: this.settings
 			});
-			this.on('input', this.input.bind(this));
-			this.on('close', this.close.bind(this));
+			this.on('input', this.#input.bind(this));
+			this.on('close', this.#close.bind(this));
 			this.status({});
 		};
 		get client() {
@@ -46,7 +46,7 @@ export default function(RED) {
 				str = String(str);
 			return (str.length > maxLength) ? str.slice(0, (maxLength - 3)) + '...' : str;
 		};
-		async input(msg, send, done) {
+		async #input(msg, send, done) {
 			let device;
 			try {
 				this.status({ fill: 'blue', shape: 'dot', text: 'Getting device...' });
@@ -54,7 +54,7 @@ export default function(RED) {
 				const value = RED.util.evaluateNodeProperty(this.config.value, this.config.valueType, this, msg);
 				const property = RED.util.evaluateNodeProperty(this.config.property, this.config.propertyType, this, msg);
 				if (!property || !['getProperties', 'getProperty', 'setProperty', 'subscribe', 'unsubscribe'].includes(this.config.action))
-					throw new Error("Property name is missing (configure node or provide msg.property)");
+					throw new Error('Property name is missing (configure node or provide msg.property)');
 				const deviceConfig = this.getDeviceConfig(msg);
 				const deviceKey = this.getDeviceId(deviceConfig);
 				if (this.devices.has(deviceKey)) {
@@ -142,14 +142,14 @@ export default function(RED) {
 						break;
 					};
 					case 'unsubscribe': {
-						this.status({ fill: "blue", shape: "dot", text: `Unsubscribing from ${property}...` });
+						this.status({ fill: 'blue', shape: 'dot', text: `Unsubscribing from ${property}...` });
 						const subscriptionKey = `${deviceKey}_${property}`;
 						if (this.subscriptions.has(subscriptionKey)) {
 							const subscription = this.subscriptions.get(subscriptionKey);
 							await subscription.device.stopNotify(subscription.property);
 							this.subscriptions.delete(subscriptionKey);
 							this.log(`Successfully unsubscribed from ${property} for device ${deviceKey}`);
-							this.status({ fill: "grey", shape: "ring", text: `Unsubscribed` });
+							this.status({ fill: 'grey', shape: 'ring', text: `Unsubscribed` });
 						} else {
 							this.warn(`Not subscribed to ${property} for device ${deviceKey}. Cannot unsubscribe.`);
 							this.status({});
@@ -159,16 +159,16 @@ export default function(RED) {
 				// if (this.config.action !== 'subscribe')
 				// 	await device.disconnect(); // TODO: а может всетаки не отключаться?
 				done();
-			} catch (error) {
-				msg.error = error;
-				msg.code = error.code || 'unknown';
-				msg.payload = error.message || 'Unknown error';
+			} catch (err) {
+				msg.error = err;
+				msg.code = err.code || 'unknown';
+				msg.payload = err.message || 'Unknown error';
 				this.status({ fill: 'red', shape: 'ring', text: 'Error' });
-				done(error);
+				done(err);
 			}
 		};
-		async close() {
-			this.debug("Node closing, cleaning up all active connections and subscriptions...");
+		async #close(removed, done) {
+			this.debug(`Node closing, cleaning up all active connections and subscriptions... (removed: ${!!removed})`);
 			const cleanupPromises = [];
 			for (const [key, device] of this.devices.entries()) {
 				this.debug(`Disconnecting device instance for key: ${key}`);
@@ -178,13 +178,14 @@ export default function(RED) {
 			}
 			try {
 				await Promise.all(cleanupPromises);
-				this.log("All active device connections closed.");
-			} catch (error) {
-				this.error("Error during connection cleanup on node close.");
+				this.log('All active device connections closed.');
+			} catch (err) {
+				this.error('Error during connection cleanup on node close.');
 			}
 			this.devices.clear();
 			this.subscriptions.clear();
 			this.status({});
+			done();
 		};
 	});
 };

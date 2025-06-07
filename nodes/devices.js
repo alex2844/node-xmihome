@@ -4,10 +4,10 @@ export default function(RED) {
 			RED.nodes.createNode(this, config);
 			this.settings = RED.nodes.getNode(config.settings);
 			this.config = config;
-			this.on('input', this.input.bind(this));
+			this.on('input', this.#input.bind(this));
 			this.status({});
 		};
-		async input(msg, send, done) {
+		async #input(msg, send, done) {
 			this.status({ fill: 'blue', shape: 'dot', text: 'Refreshing...' });
 			try {
 				if (!this.settings)
@@ -19,12 +19,12 @@ export default function(RED) {
 					this.status({ fill: 'green', shape: 'dot', text: `Devices: ${msg.payload.length}` });
 				send(msg);
 				done();
-			} catch (error) {
-				msg.error = error;
-				msg.code = error.code || 'unknown';
-				msg.payload = error.message || 'Unknown error';
+			} catch (err) {
+				msg.error = err;
+				msg.code = err.code || 'unknown';
+				msg.payload = err.message || 'Unknown error';
 				this.status({ fill: 'red', shape: 'ring', text: 'Error' });
-				done(error);
+				done(err);
 			}
 		};
 	});

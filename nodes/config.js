@@ -15,7 +15,7 @@ export default function(RED) {
 			RED.nodes.createNode(this, config);
 			RED.httpAdmin.get(`/xmihome/devices/${this.id}`, RED.auth.needsPermission('xmihome-config.read'), this.getDevicesHandler.bind(this));
 			this.config = config;
-			this.on('close', this.close.bind(this));
+			this.on('close', this.#close.bind(this));
 		};
 		get client() {
 			if (!this.#client)
@@ -79,10 +79,9 @@ export default function(RED) {
 			this.debug('Refresh promise created and stored.');
 			return refreshPromise;
 		};
-		async close(removed) {
+		async #close(removed, done) {
 			this.debug(`Closing config node ${this.id} (removed: ${!!removed})`);
 			refreshPromises.delete(this.id);
-
 			const endpointPath = '/xmihome/devices/' + this.id;
 			const routes = RED.httpAdmin._router.stack;
 			for (let i = routes.length - 1; i >= 0; i--) {
@@ -92,7 +91,6 @@ export default function(RED) {
 					break;
 				}
 			}
-
 			if (this.#client)
 				try {
 					await this.#client.destroy();
@@ -102,6 +100,7 @@ export default function(RED) {
 				} finally {
 					this.#client = null;
 				}
+			done();
 		};
 	}, {
 		credentials: {
