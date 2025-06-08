@@ -309,7 +309,7 @@
 			device: { value: '{}', validate: validateDevice },
 			deviceType: { value: 'json' },
 			action: { value: 'getProperty', required: true },
-			property: { value: '', required: true },
+			property: { value: '' },
 			propertyType: { value: 'str' },
 			value: { value: '' },
 			valueType: { value: 'str' },
@@ -318,12 +318,13 @@
 		},
 		icon: 'font-awesome/fa-power-off',
 		inputs: 1,
-		outputs: 1,
+		outputs: 2,
 		color: '#00BC9C',
 		paletteLabel: 'Device',
 		label: function() {
 			return this.name || this.action || 'Device';
 		},
+		outputLabels: ["Command Result / Notifications", "Connection Events"],
 		oneditprepare: function() {
 			node = this;
 			$('#node-input-device').typedInput({
