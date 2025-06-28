@@ -1,0 +1,27 @@
+{
+	"name": "xmihome",
+	"version": "1.0.0",
+	"private": false,
+	"type": "module",
+	"exports": {
+		".": "./src/index.js",
+		"./*": "./src/*"
+	},
+	"bin": {
+		"xmihome-setup-bluetooth": "./bin/setup-bluetooth.js"
+	},
+	"scripts": {
+		"test": "tsc -p ./jsconfig.json",
+		"postinstall": "xmihome-setup-bluetooth"
+	},
+	"files": [
+		"./src/*.js"
+	],
+	"dependencies": {
+		"xmihome-devices": "workspace:*",
+		"mijia-io": "github:salamwaddah/mijia-io"
+	},
+	"optionalDependencies": {
+		"dbus-next": "github:dcodeIO/node-dbus-next"
+	}
+}

@@ -1,5 +1,7 @@
-import Device from '../device.js';
+import { Device } from 'xmihome';
 import crypto from 'crypto';
+/** @import { XiaomiMiHome } from 'xmihome' */
+/** @import { Config, Property, UuidMapping } from 'xmihome/device.js' */
 
 const isBrowser = typeof window !== 'undefined';
 
@@ -10,14 +12,12 @@ const isBrowser = typeof window !== 'undefined';
 export default class extends Device {
 	/**
 	 * Название устройства.
-	 * @static
 	 * @type {string}
 	 */
 	static name = 'Mi Smart Kettle';
 
 	/**
 	 * Список альтернативных названий устройства (алиасов).
-	 * @static
 	 * @type {string[]}
 	 */
 	static alias = [
@@ -26,7 +26,6 @@ export default class extends Device {
 
 	/**
 	 * Список поддерживаемых моделей устройств.
-	 * @static
 	 * @type {string[]}
 	 */
 	static models = [
@@ -35,61 +34,47 @@ export default class extends Device {
 
 	/**
 	 * Возможные значения свойства `action` (действие чайника).
-	 * @static
 	 * @type {string[]}
 	 */
-	static PROP_ACTION = [ 'idle', 'heating', 'cooling', 'keeping_warm' ];
+	static PROP_ACTION = ['idle', 'heating', 'cooling', 'keeping_warm'];
 
 	/**
 	 * Возможные значения свойства `keep_warm_type` (тип поддержания температуры).
-	 * @static
 	 * @type {string[]}
 	 */
-	static PROP_KEEP_WARM_TYPE = [ 'boil_and_cool_down', 'heat_to_temperature' ];
+	static PROP_KEEP_WARM_TYPE = ['boil_and_cool_down', 'heat_to_temperature'];
 
 	/**
 	 * Возможные значения свойства `mode` (режим работы чайника).
-	 * @static
 	 * @type {object}
 	 */
 	static PROP_MODE = { 255: 'none', 1: 'boil', 2: 'keep_warm' };
 
 	/**
-	 * Описание свойств устройства и их параметров для взаимодействия через Bluetooth.
-	 * @static
-	 * @type {object}
-	 * @property {object} authInit Характеристика инициализации аутентификации.
-	 * @property {string} authInit.service UUID сервиса Bluetooth.
-	 * @property {string} authInit.characteristic UUID характеристики Bluetooth.
-	 * @property {object} auth Характеристика аутентификации.
-	 * @property {string} auth.service UUID сервиса Bluetooth.
-	 * @property {string} auth.characteristic UUID характеристики Bluetooth.
-	 * @property {object} keep_warm_settings Настройки режима поддержания тепла. Позволяет установить целевую температуру и тип подогрева.
-	 * @property {string} keep_warm_settings.service UUID сервиса Bluetooth.
-	 * @property {string} keep_warm_settings.characteristic UUID характеристики Bluetooth.
-	 * @property {object} keep_warm_duration Длительность поддержания тепла в часах. Принимает значение от 1 до 12.
-	 * @property {string} keep_warm_duration.service UUID сервиса Bluetooth.
-	 * @property {string} keep_warm_duration.characteristic UUID характеристики Bluetooth.
-	 * @property {object} keep_warm_refill Режим "Не кипятить повторно".
-	 * @property {string} keep_warm_refill.service UUID сервиса Bluetooth.
-	 * @property {string} keep_warm_refill.characteristic UUID характеристики Bluetooth.
-	 * @property {object} status Статус чайника.
-	 * @property {string} status.service UUID сервиса Bluetooth.
-	 * @property {string} status.characteristic UUID характеристики Bluetooth.
-	 * @property {function} status.notify Функция для обработки уведомлений об изменении статуса и разбора буфера данных.
+	 * Описание свойств устройства.
+	 * @type {Object.<string, Property>}
+	 * @property {Property} authInit Характеристика инициализации аутентификации.
+	 * @property {Property} auth Характеристика аутентификации.
+	 * @property {Property} keep_warm_settings Настройки режима поддержания тепла. Позволяет установить целевую температуру и тип подогрева.
+	 * @property {Property} keep_warm_duration Длительность поддержания тепла в часах. Принимает значение от 1 до 12.
+	 * @property {Property} keep_warm_refill Режим "Не кипятить повторно".
+	 * @property {Property} status Статус чайника.
 	 */
 	static properties = {
 		'authInit': {
 			service: '0000fe95-0000-1000-8000-00805f9b34fb',
-			characteristic: '00000010-0000-1000-8000-00805f9b34fb'
+			characteristic: '00000010-0000-1000-8000-00805f9b34fb',
+			access: []
 		},
 		'auth': {
 			service: '0000fe95-0000-1000-8000-00805f9b34fb',
-			characteristic: '00000001-0000-1000-8000-00805f9b34fb'
+			characteristic: '00000001-0000-1000-8000-00805f9b34fb',
+			access: []
 		},
 		'keep_warm_settings': {
 			service: '01344736-0000-1000-8000-262837236156',
 			characteristic: '0000aa01-0000-1000-8000-00805f9b34fb',
+			access: ['read', 'write'],
 			read: buf => ({
 				type: this.PROP_KEEP_WARM_TYPE[buf.readUInt8(0)],
 				temperature: buf.readUInt8(1)
@@ -109,6 +94,7 @@ export default class extends Device {
 		'keep_warm_duration': {
 			service: '01344736-0000-1000-8000-262837236156',
 			characteristic: '0000aa04-0000-1000-8000-00805f9b34fb',
+			access: ['read', 'write'],
 			read: buf => buf.readUInt8(0) / 2,
 			write: hours => {
 				if ((hours < 1) || (hours > 12))
@@ -121,6 +107,7 @@ export default class extends Device {
 		'keep_warm_refill': {
 			service: '01344736-0000-1000-8000-262837236156',
 			characteristic: '0000aa05-0000-1000-8000-00805f9b34fb',
+			access: ['read', 'write'],
 			read: buf => buf.readUInt8(0) === 1,
 			write: enabled => {
 				const buf = Buffer.alloc(1);
@@ -131,6 +118,7 @@ export default class extends Device {
 		'status': {
 			service: '01344736-0000-1000-8000-262837236156',
 			characteristic: '0000aa02-0000-1000-8000-00805f9b34fb',
+			access: ['notify'],
 			notify: buf => ({
 				action: this.PROP_ACTION[buf.readUInt8(0)],
 				mode: this.PROP_MODE[buf.readUInt8(1)],
@@ -144,8 +132,7 @@ export default class extends Device {
 
 	/**
 	 * Карта для преобразования полных 128-битных UUID в короткие 16-битные.
-	 * @static
-	 * @type {{services: Object.<string, string>, characteristics: Object.<string, string>}}
+	 * @type {UuidMapping}
 	 */
 	static uuidMap = {
 		services: {
@@ -164,9 +151,8 @@ export default class extends Device {
 
 	/**
 	 * Конструктор класса.
-	 * @param {object} config Конфигурация устройства.
+	 * @param {Config} config Конфигурация устройства.
 	 * @param {XiaomiMiHome} client Экземпляр класса XiaomiMiHome.
-	 * @constructor
 	 */
 	constructor(config, client) {
 		super(config, client);
@@ -174,7 +160,7 @@ export default class extends Device {
 		if (config.token) {
 			this.token = Buffer.from(config.token, 'hex');
 			this.client.log('debug', `Kettle: Using provided token for ${this.config.mac}`);
-		}else{
+		} else {
 			this.token = crypto.randomBytes(12);
 			this.client.log('debug', `Kettle: Generating new random token for ${this.config.mac}`);
 		}
@@ -182,7 +168,6 @@ export default class extends Device {
 
 	/**
 	 * Устанавливает соединение с устройством.
-	 * @async
 	 * @override
 	 */
 	async connect() {
@@ -191,12 +176,11 @@ export default class extends Device {
 
 	/**
 	 * Выполняет специфичную для устройства логику аутентификации.
-	 * @async
 	 * @override
 	 */
 	async auth() {
 		if (isBrowser) {
-			const storageKey = `mac_${this.constructor.models[0]}`;
+			const storageKey = `mac_${this.class.models[0]}`;
 			let mac = localStorage.getItem(storageKey);
 			if (mac) {
 				if (!confirm(`Use saved MAC address: ${mac}?`))
@@ -221,16 +205,16 @@ export default class extends Device {
 		]);
 		this.client.log('debug', `Kettle ${this.config.mac}: Calculated ma=${ma.toString('hex')}, mb=${mb.toString('hex')}`);
 
-		const authInit = await this.device.getCharacteristic(this.constructor.properties.authInit);
+		const authInit = await this.device.getCharacteristic(this.class.properties.authInit);
 		this.client.log('debug', `Kettle ${this.config.mac}: Writing auth init sequence`);
-		await authInit.writeValue(Buffer.from([ 0x90, 0xCA, 0x85, 0xDE ]));
+		await authInit.writeValue(Buffer.from([0x90, 0xCA, 0x85, 0xDE]));
 
-		const auth = await this.device.getCharacteristic(this.constructor.properties.auth);
+		const auth = await this.device.getCharacteristic(this.class.properties.auth);
 		await auth.startNotifications();
 		this.client.log('debug', `Kettle ${this.config.mac}: Started auth notifications, writing token`);
 
 		await new Promise((resolve, reject) => {
-			auth.once('valuechanged', buffer => {
+			auth.once('valuechanged', (/** @type {any} */ buffer) => {
 				this.client.log('debug', `Kettle ${this.config.mac}: Received auth challenge: ${buffer.toString('hex')}`);
 				const value = this.cipher(mb, this.cipher(ma, buffer));
 				this.client.log('debug', `Kettle ${this.config.mac}: Decrypted challenge: ${value.toString('hex')}, Expected token: ${this.token.toString('hex')}`);
@@ -238,7 +222,7 @@ export default class extends Device {
 				if (Buffer.compare(value, this.token) === 0) {
 					this.client.log('debug', `Kettle ${this.config.mac}: Auth challenge successful`);
 					resolve();
-				}else{
+				} else {
 					this.client.log('error', `Kettle ${this.config.mac}: Auth challenge failed! Token mismatch.`);
 					reject('Not valid token');
 				}
@@ -248,7 +232,7 @@ export default class extends Device {
 			auth.writeValue(encryptedToken);
 		});
 		this.client.log('debug', `Kettle ${this.config.mac}: Writing final auth confirmation`);
-		await auth.writeValue(this.cipher(this.token, Buffer.from([ 0x92, 0xAB, 0x54, 0xFA ])));
+		await auth.writeValue(this.cipher(this.token, Buffer.from([0x92, 0xAB, 0x54, 0xFA])));
 		await auth.stopNotifications();
 		this.client.log('info', `Kettle ${this.config.mac}: Bluetooth authentication successful`);
 	};
@@ -268,14 +252,14 @@ export default class extends Device {
 		let j = 0;
 		for (let i = 0; i < 256; i++) {
 			j = (j + perm[i] + key[i % keyLen]) % 256;
-			[ perm[i], perm[j] ] = [ perm[j], perm[i] ];
+			[perm[i], perm[j]] = [perm[j], perm[i]];
 		}
 		let index1 = 0;
 		let index2 = 0;
 		for (let i = 0; i < input.length; i++) {
 			index1 = (index1 + 1) % 256;
 			index2 = (index2 + perm[index1]) % 256;
-			[ perm[index1], perm[index2] ] = [ perm[index2], perm[index1] ];
+			[perm[index1], perm[index2]] = [perm[index2], perm[index1]];
 			const idx = (perm[index1] + perm[index2]) % 256;
 			output[i] = input[i] ^ perm[idx];
 		}

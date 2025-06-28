@@ -1,5 +1,4 @@
-/node_modules/
-/nodes/locales/*/*.html
-/README.md
-/xmihome_bluetooth.conf
+node_modules
+xmihome_bluetooth.conf
+dist
 .env

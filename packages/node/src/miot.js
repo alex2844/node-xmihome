@@ -1,42 +1,39 @@
 import crypto from 'crypto';
-import miio from 'miio';
+import miio from 'mijia-io';
+/** @import { XiaomiMiHome } from './index.js' */
 
 /**
  * Класс для взаимодействия с MiIO и облаком Xiaomi.
  */
-class Miot {
+export default class Miot {
 	/**
 	 * Находит спецификацию модели устройства на miot-spec.org.
-	 * @static
-	 * @async
 	 * @param {string} model Модель устройства.
 	 * @returns {Promise<object|undefined>} Объект спецификации модели или `undefined`, если модель не найдена.
 	 */
 	static async findModel(model) {
-		this.client?.log('debug', `Searching for model spec on miot-spec.org: ${model}`);
-		const { instances } = await fetch('https://miot-spec.org/miot-spec-v2/instances?status=released').then(res => res.json());
+		const instancesResponse = await fetch('https://miot-spec.org/miot-spec-v2/instances?status=released');
+		const /** @type {{ instances: any[] }} */ { instances } = await instancesResponse.json();
 		const instance = instances.sort((a, b) => (b.ts - a.ts)).find(instance => instance.model === model);
-		if (!instance) {
-			this.client?.log('debug', `Model spec not found for: ${model}`);
+		if (!instance)
 			return;
-		}
-		const spec = await fetch(`https://miot-spec.org/miot-spec-v2/instance?type=${instance.type}`).then(res => res.json());
+		const specResponse = await fetch(`https://miot-spec.org/miot-spec-v2/instance?type=${instance.type}`);
+		const /** @type {{ type: string, description: string, services: any[] }} */ spec = await specResponse.json();
 		const properties = {};
-		spec.services.slice(1).forEach(service => {
-			const skp = service.type.split(':');
+		for (const s of /** @type {{ iid: number, type: string, description: string, properties: any[] }[]} */ (spec.services).slice(1)) {
+			const skp = s.type.split(':');
 			if (skp[1] === 'miot-spec-v2')
-				service.properties.forEach(prop => {
-					const pkp = prop.type.split(':');
-					if (prop.access.length)
+				for (const p of /** @type {{ iid: number, type: string, description: string, format: string, access: any[] }[]} */ (s.properties)) {
+					const pkp = p.type.split(':');
+					if (p.access.length)
 						properties[`${skp[3]}_${pkp[3]}`] = {
-							siid: service.iid,
-							piid: prop.iid,
-							format: prop.format,
-							access: prop.access
+							siid: s.iid,
+							piid: p.iid,
+							format: p.format,
+							access: p.access
 						};
-				});
-		});
-		this.client?.log('info', `Model spec found and parsed for: ${model}`);
+				}
+		}
 		return {
 			name: spec.description,
 			type: spec.type,
@@ -54,7 +51,13 @@ class Miot {
 	 * Список поддерживаемых стран для облачных запросов.
 	 * @type {string[]}
 	 */
-	countries = [ 'sg', 'cn', 'ru', 'us', 'tw', 'de' ];
+	countries = ['sg', 'cn', 'ru', 'us', 'tw', 'de'];
+
+	/**
+	 * Экземпляр класса XiaomiMiHome.
+	 * @type {XiaomiMiHome}
+	 */
+	client = null;
 
 	/**
 	 * Конструктор класса Miot.
@@ -67,7 +70,6 @@ class Miot {
 	/**
 	 * Возвращает учетные данные для облачного подключения из конфигурации клиента.
 	 * @type {object}
-	 * @readonly
 	 */
 	get credentials() {
 		return this.client.config.credentials || {};
@@ -76,7 +78,6 @@ class Miot {
 	/**
 	 * Возвращает модуль miio для прямого взаимодействия с MiIO устройствами.
 	 * @type {object}
-	 * @readonly
 	 */
 	get miio() {
 		return miio;
@@ -111,7 +112,7 @@ class Miot {
 	 * @returns {string} Подпись запроса в base64.
 	 */
 	generateSignature(path, _signedNonce, nonce, params) {
-		const exps = [ path, _signedNonce, nonce ];
+		const exps = [path, _signedNonce, nonce];
 		const paramKeys = Object.keys(params);
 		paramKeys.sort();
 		for (let i = 0, { length } = paramKeys; i < length; i++) {
@@ -128,7 +129,7 @@ class Miot {
 	generateNonce() {
 		const buf = Buffer.allocUnsafe(12);
 		buf.write(crypto.randomBytes(8).toString('hex'), 0, 'hex');
-		buf.writeInt32BE(parseInt(Date.now() / 60000, 10), 8);
+		buf.writeInt32BE(Math.floor(Date.now() / 60_000), 8);
 		return buf.toString('base64');
 	};
 
@@ -146,7 +147,6 @@ class Miot {
 
 	/**
 	 * Выполняет вход в аккаунт Xiaomi и получает учетные данные (ssecurity, userId, serviceToken).
-	 * @async
 	 * @throws {Error} Если не удалось выполнить вход на каком-либо из этапов.
 	 */
 	async login() {
@@ -156,20 +156,21 @@ class Miot {
 		if (!this.credentials.password)
 			throw new Error('password empty');
 
+		// --- Шаг 1: Получение _sign ---
 		this.client.log('debug', 'Login Step 1: Fetching _sign');
-		const sign = await fetch('https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true').then(res => {
-			if (!res.ok)
-				throw new Error(`Response step 1 error with status ${res.statusText}`);
-			return res.text().then(this.parseJson.bind(this)).then(data => {
-				this.client.log('debug', 'Login Step 1: Got _sign successfully');
-				if (data._sign)
-					return data._sign;
-				throw new Error('Login step 1 failed');
-			})
-		});
+		const step1Response = await fetch('https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true');
+		if (!step1Response.ok)
+			throw new Error(`Response step 1 error with status ${step1Response.statusText}`);
+		const step1Text = await step1Response.text();
+		const step1Data = this.parseJson(step1Text);
+		if (!step1Data._sign)
+			throw new Error('Login step 1 failed: _sign not found');
+		const sign = step1Data._sign;
+		this.client.log('debug', 'Login Step 1: Got _sign successfully');
 
+		// --- Шаг 2: Отправка учетных данных и получение токенов ---
 		this.client.log('debug', 'Login Step 2: Sending credentials');
-		const { ssecurity, userId, location } = await fetch('https://account.xiaomi.com/pass/serviceLoginAuth2', {
+		const step2Response = await fetch('https://account.xiaomi.com/pass/serviceLoginAuth2', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded'
@@ -183,39 +184,35 @@ class Miot {
 				qs: '%3Fsid%3Dxiaomiio%26_json%3Dtrue',
 				_sign: sign
 			})
-		}).then(res => {
-			if (!res.ok)
-				throw new Error(`Response step 2 error with status ${res.statusText}`);
-			return res.text().then(this.parseJson.bind(this));
 		});
+		if (!step2Response.ok)
+			throw new Error(`Response step 2 error with status ${step2Response.statusText}`);
+		const step2Text = await step2Response.text();
+		const { ssecurity, userId, location } = this.parseJson(step2Text);
 		if (!ssecurity || !userId || !location) {
 			this.client.log('error', 'Login Step 2 Failed: Missing ssecurity, userId, or location.');
 			throw new Error('Failed to sign in at step 2. Please sign in manually https://account.xiaomi.com/');
 		}
 		this.client.log('debug', 'Login Step 2: Got ssecurity and userId successfully');
 
-		this.client.log('debug', 'Login Step 3: Fetching serviceToken from location/sign');
-		const serviceToken = await fetch(sign.indexOf('http') === -1 ? location : sign).then(res => {
-			if (!res.ok)
-				throw new Error(`Response step 3 error with status ${res.statusText}`);
-			let serviceToken;
-			res.headers.get('set-cookie').split(', ').forEach(cookieStr => {
-				const cookie = cookieStr.split('; ')[0];
-				const idx = cookie.indexOf('=');
-				const key = cookie.slice(0, idx);
-				const value = cookie.slice(idx + 1).trim();
-				if (key === 'serviceToken')
-					serviceToken = value;
-			});
-			if (serviceToken)
-				return serviceToken;
+		// --- Шаг 3: Получение serviceToken ---
+		this.client.log('debug', 'Login Step 3: Fetching serviceToken from location');
+		const step3Response = await fetch(location); // Упростил логику, location должен быть всегда
+		if (!step3Response.ok)
+			throw new Error(`Response step 3 error with status ${step3Response.statusText}`);
+		const cookies = step3Response.headers.get('set-cookie');
+		if (!cookies)
+			throw new Error('Login step 3 failed: No set-cookie header found.');
+		const serviceToken = cookies.match(/serviceToken=([^;]+)/)?.[1];
+		if (!serviceToken) {
 			this.client.log('error', 'Login Step 3 Failed: Could not extract serviceToken from cookies.');
 			throw new Error('Login step 3 failed');
-		});
+		}
 		this.client.log('debug', 'Login Step 3: Got serviceToken successfully');
-		this.client.log('info', `Login successful for user ${userId}`);
 
-		this.credentials.ssecurity = ssecurity; // Buffer.from(data.ssecurity, 'base64').toString('hex');
+		// --- Завершение: Сохранение учетных данных ---
+		this.client.log('info', `Login successful for user ${userId}`);
+		this.credentials.ssecurity = ssecurity;
 		this.credentials.userId = userId;
 		this.credentials.serviceToken = serviceToken;
 		this.client.emit('login', this.credentials);
@@ -223,7 +220,6 @@ class Miot {
 
 	/**
 	 * Выполняет запрос к облачному API Xiaomi.
-	 * @async
 	 * @param {string} path Путь API запроса.
 	 * @param {object} data Данные запроса.
 	 * @returns {Promise<object>} Ответ API в формате JSON.
@@ -238,17 +234,19 @@ class Miot {
 		if (!this.countries.includes(this.credentials.country))
 			throw new Error(`The country ${this.credentials.country} is not support, list supported countries is ${this.countries.join(', ')}`);
 		const params = {
-			data: JSON.stringify(data),
+			data: JSON.stringify(data)
 		};
 		const _nonce = this.generateNonce();
 		const signedNonce = this.signedNonce(this.credentials.ssecurity, _nonce);
 		const signature = this.generateSignature(path, signedNonce, _nonce, params);
 
 		this.client.log('debug', `Sending cloud request to: ${this.getApiUrl(this.credentials.country)}${path}`);
+		const controller = new AbortController();
+		const timerId = setTimeout(() => controller.abort(), 5_000);
 		try {
 			const res = await fetch(this.getApiUrl(this.credentials.country) + path, {
 				method: 'POST',
-				timeout: 5000,
+				signal: controller.signal,
 				headers: {
 					'x-xiaomi-protocal-flag-cli': 'PROTOCAL-HTTP2',
 					'Content-Type': 'application/x-www-form-urlencoded',
@@ -278,9 +276,14 @@ class Miot {
 				throw new Error(`Request error with status ${res.statusText}`);
 			}
 		} catch (err) {
+			if (err.name === 'AbortError') {
+				this.client.log('error', `Cloud request to ${path} timed out after 5000ms`);
+				throw new Error('Request timed out');
+			}
 			this.client.log('error', `Network error during cloud request to ${path}:`, err);
 			throw err;
+		} finally {
+			clearTimeout(timerId);
 		}
 	};
 };
-export default Miot;

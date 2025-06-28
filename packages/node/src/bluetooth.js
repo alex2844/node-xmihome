@@ -1,20 +1,231 @@
 import EventEmitter from 'events';
 import { GET_DEVICE_DISCOVERY_TIMEOUT } from './constants.js';
+import { createFallbackProxy } from './index.js';
+/** @import { XiaomiMiHome } from './index.js' */
+/** @import { default as Device, Config as DeviceConfig } from './device.js' */
+
+/**
+ * Класс-обертка для GATT-характеристики.
+ */
+export class BluetoothCharacteristic {
+	/**
+	 * @param {import('dbus-next').ClientInterface} dbusInterface - Интерфейс org.bluez.GattCharacteristic1
+	 */
+	constructor(dbusInterface) {
+		this.dbusInterface = dbusInterface;
+	};
+
+	/**
+	 * Включает уведомления для этой характеристики.
+	 */
+	async startNotifications() {
+		return this.dbusInterface.StartNotify();
+	};
+
+	/**
+	 * Отключает уведомления для этой характеристики.
+	 */
+	async stopNotifications() {
+		return this.dbusInterface.StopNotify();
+	};
+
+	/**
+	 * Читает значение характеристики.
+	 * @returns {Promise<Buffer>} Промис, который разрешится буфером со значением.
+	 */
+	async readValue() {
+		return this.dbusInterface.ReadValue({});
+	};
+
+	/**
+	 * Записывает значение в характеристику.
+	 * @param {Buffer} buffer - Буфер данных для записи.
+	 */
+	async writeValue(buffer) {
+		return this.dbusInterface.WriteValue(buffer, {});
+	};
+};
+
+/**
+ * Класс-обертка для Bluetooth-устройства.
+ */
+export class BluetoothDevice {
+	/**
+	 * @typedef {Object<string, {
+	 *   path: string,
+	 *   characteristics: Object<string, {path: string, flags: string[]}>
+	 * }>} GattProfile
+	 */
+
+	/** @type {GattProfile|null} */
+	gattProfile = null;
+
+	/**
+	 * @param {import('dbus-next').ClientInterface} dbusInterface - Интерфейс org.bluez.Device1
+	 * @param {import('dbus-next').ProxyObject} proxy - Прокси-объект устройства
+	 * @param {Bluetooth} bluetooth - Экземпляр класса Bluetooth.
+	 */
+	constructor(dbusInterface, proxy, bluetooth) {
+		this.dbusInterface = dbusInterface;
+		this.proxy = proxy;
+		this.bluetooth = bluetooth;
+		this.client = bluetooth.client;
+		this.objectManager = null;
+		this.characteristics = new Map();
+	};
+
+	/**
+	 * Возвращает уникальный идентификатор устройства в формате D-Bus (dev_XX_XX_XX_...).
+	 * Этот ID извлекается из пути D-Bus объекта.
+	 * @type {string}
+	 */
+	get id() {
+		return this.proxy.path.split('/').pop();
+	};
+
+	/**
+	 * Устанавливает соединение с устройством.
+	 * @returns {Promise<void>}
+	 */
+	async connect() {
+		await this.dbusInterface.Connect();
+		return new Promise(async (resolve, reject) => {
+			const properties = this.proxy.getInterface('org.freedesktop.DBus.Properties');
+			const isResolved = await properties.Get('org.bluez.Device1', 'ServicesResolved');
+			if (isResolved.value)
+				return resolve();
+			let timerId;
+			const onPropertiesChanged = (/** @type {any} */ changedProps) => {
+				if (changedProps.ServicesResolved) {
+					clearTimeout(timerId);
+					this.bluetooth.off(`properties:${this.id}`, onPropertiesChanged);
+					resolve();
+				}
+			};
+			timerId = setTimeout(() => {
+				this.bluetooth.off(`properties:${this.id}`, onPropertiesChanged);
+				reject(new Error(`Timed out after 10s waiting for services to be resolved.`));
+			}, 10_000);
+			this.bluetooth.on(`properties:${this.id}`, onPropertiesChanged);
+		});
+	};
+
+	/**
+	 * Разрывает соединение с устройством.
+	 * @returns {Promise<void>}
+	 */
+	async disconnect() {
+		return this.dbusInterface.Disconnect();
+	};
+
+	/**
+	 * Получает и кэширует экземпляр обертки для GATT-характеристики.
+	 * Метод является универсальным и поддерживает два режима работы:
+	 * 1. Поиск по UUID: передайте { service: 'uuid', characteristic: 'uuid' }.
+	 * 2. Прямое формирование пути: передайте { service: '0004', characteristic: '000f' }.
+	 * @async
+	 * @param {object} props - Описание характеристики.
+	 * @param {string} props.service - UUID сервиса или его короткий ID для пути.
+	 * @param {string} props.characteristic - UUID характеристики или ее короткий ID для пути.
+	 * @returns {Promise<BluetoothCharacteristic>} Прокси-объект характеристики.
+	 * @throws {Error} Если характеристика не найдена.
+	 */
+	async getCharacteristic({ service, characteristic }) {
+		let path;
+		const uuidMap = this.bluetooth.connected[this.id]?.class?.uuidMap;
+		if (uuidMap) {
+			if (service.includes('-') && uuidMap.services?.[service])
+				service = uuidMap.services[service];
+			if (characteristic.includes('-') && uuidMap.characteristics?.[characteristic])
+				characteristic = uuidMap.characteristics[characteristic];
+		}
+		if (service.includes('-') || characteristic.includes('-')) {
+			await this.discoverGattProfile();
+			const serviceInfo = this.gattProfile[service];
+			if (!serviceInfo)
+				throw new Error(`Service with UUID ${service} not found on device.`);
+			const charInfo = serviceInfo.characteristics[characteristic];
+			if (!charInfo)
+				throw new Error(`Characteristic with UUID ${characteristic} not found in service ${service}.`);
+			path = charInfo.path;
+		} else
+			path = `${this.proxy.path}/service${service}/char${characteristic}`;
+		if (this.characteristics.has(path))
+			return this.characteristics.get(path);
+		const proxy = await this.proxy.bus.getProxyObject('org.bluez', path);
+		const iface = proxy.getInterface('org.bluez.GattCharacteristic1')
+		const charProxied = createFallbackProxy(new BluetoothCharacteristic(iface), iface);
+		this.characteristics.set(path, charProxied);
+		return charProxied;
+	};
+
+	/**
+	 * Обнаруживает и кэширует полный GATT-профиль устройства (все сервисы и характеристики).
+	 * Этот метод является относительно дорогостоящей операцией и должен вызываться только при необходимости.
+	 * Результаты кэшируются для последующих вызовов.
+	 * @returns {Promise<GattProfile>}
+	 */
+	async discoverGattProfile() {
+		if (this.gattProfile) {
+			this.client?.log('debug', `GATT profile for ${this.id} already cached. Returning cached version.`);
+			return this.gattProfile;
+		}
+		this.client?.log('info', `Discovering GATT profile for device ${this.id}...`);
+		if (!this.objectManager) {
+			this.client?.log('debug', `D-Bus ObjectManager not found, getting it now.`);
+			const bluezProxy = await this.proxy.bus.getProxyObject('org.bluez', '/');
+			this.objectManager = bluezProxy.getInterface('org.freedesktop.DBus.ObjectManager');
+		}
+		const managedObjects = await this.objectManager.GetManagedObjects();
+		this.client?.log('debug', `Got ${Object.keys(managedObjects).length} managed objects from D-Bus.`);
+		const /** @type {GattProfile} */ services = {};
+		const characteristicsByServicePath = {};
+		for (const path in managedObjects) {
+			if (!path.startsWith(this.proxy.path))
+				continue;
+			const interfaces = managedObjects[path];
+			const serviceInterface = interfaces['org.bluez.GattService1'];
+			const charInterface = interfaces['org.bluez.GattCharacteristic1'];
+			if (serviceInterface) {
+				const uuid = serviceInterface.UUID.value;
+				this.client?.log('debug', `Found GATT Service: UUID=${uuid}, Path=${path}`);
+				services[uuid] = {
+					path,
+					characteristics: {}
+				};
+				characteristicsByServicePath[path] = services[uuid].characteristics;
+			} else if (charInterface) {
+				const parentServicePath = charInterface.Service.value;
+				const parentServiceChars = characteristicsByServicePath[parentServicePath];
+				if (parentServiceChars) {
+					const uuid = charInterface.UUID.value;
+					const flags = charInterface.Flags.value;
+					this.client?.log('debug', `  - Found GATT Characteristic: UUID=${uuid}, Flags=[${flags.join(', ')}], Path=${path}`);
+					parentServiceChars[uuid] = { path, flags };
+				} else
+					this.client?.log('warn', `Found characteristic ${path} but its parent service ${parentServicePath} was not found in the map.`);
+			}
+		}
+		this.gattProfile = services;
+		this.client?.log('info', `GATT profile discovery complete for ${this.id}. Found ${Object.keys(services).length} services.`);
+		return this.gattProfile;
+	};
+};
 
 /**
  * Класс для взаимодействия с Bluetooth LE устройствами.
  * @extends EventEmitter
  */
-export class Bluetooth extends EventEmitter {
+export default class Bluetooth extends EventEmitter {
 	/**
 	 * Объект для хранения подключенных Bluetooth устройств, где ключ - это ID устройства.
-	 * @type {object<string, Device>}
+	 * @type {Object.<string, Device>}
 	 */
 	connected = {};
 
 	/**
 	 * Объект для хранения обнаруженных Bluetooth устройств, где ключ - это ID устройства.
-	 * @type {object<string, object>}
+	 * @type {Object.<string, DeviceConfig & {path: string}>}
 	 */
 	devices = {};
 
@@ -32,8 +243,6 @@ export class Bluetooth extends EventEmitter {
 
 	/**
 	 * Создает и инициализирует экземпляр класса Bluetooth.
-	 * @static
-	 * @async
 	 * @returns {Promise<Bluetooth>} Экземпляр класса Bluetooth.
 	 */
 	static async createBluetooth() {
@@ -51,29 +260,8 @@ export class Bluetooth extends EventEmitter {
 	};
 
 	/**
-	 * Создает Proxy-обертку, которая делегирует вызовы на интерфейс dbus-next,
-	 * сохраняя при этом методы и свойства оригинального объекта-обертки.
-	 * @static
-	 * @param {object} target - Экземпляр класса-обертки.
-	 * @param {import('dbus-next').ProxyInterface} dbusInterface - Интерфейс dbus-next, на который будут проксироваться вызовы.
-	 * @returns {Proxy} Готовый к использованию прокси-объект.
-	 */
-	static createDbusProxy(target, dbusInterface) {
-		return new Proxy(target, {
-			get(target, prop, receiver) {
-				if (prop in target)
-					return Reflect.get(target, prop, receiver);
-				const dbusProp = dbusInterface[prop];
-				if (typeof dbusProp === 'function')
-					return dbusProp.bind(dbusInterface);
-				return dbusProp;
-			}
-		});
-	};
-
-	/**
 	 * Конструктор класса Bluetooth.
-	 * @param {XiaomiMiHome} client Экземпляр класса XiaomiMiHome.
+	 * @param {XiaomiMiHome} [client] Экземпляр класса XiaomiMiHome.
 	 */
 	constructor(client) {
 		super();
@@ -87,7 +275,7 @@ export class Bluetooth extends EventEmitter {
 	 * @returns {Promise<object>} Интерфейс адаптера Bluetooth.
 	 * @throws {Error} Если нет доступа к Bluetooth сервисам через D-Bus.
 	 */
-	async defaultAdapter(device='hci0') {
+	async defaultAdapter(device = 'hci0') {
 		this.client?.log('info', `Initializing Bluetooth adapter: ${device}`);
 		try {
 			const dbus = await import('dbus-next');
@@ -133,9 +321,9 @@ export class Bluetooth extends EventEmitter {
 				interface: 'org.freedesktop.DBus',
 				member: 'AddMatch',
 				signature: 's',
-				body: [ "type='signal'" ]
+				body: ["type='signal'"]
 			}));
-			this.bus.on('message', this.listener.bind(this));
+			this.bus.on('message', this.#listener.bind(this));
 			this.client?.log('info', `Bluetooth adapter ${device} initialized successfully`);
 			return this.adapter;
 		} catch (err) {
@@ -162,7 +350,7 @@ export class Bluetooth extends EventEmitter {
 					result[key] = this.extractProperties(value);
 				else
 					result[key] = value;
-			}else
+			} else
 				result[key] = prop;
 		}
 		return result;
@@ -170,10 +358,9 @@ export class Bluetooth extends EventEmitter {
 
 	/**
 	 * Слушатель сообщений D-Bus для обработки событий Bluetooth.
-	 * @private
 	 * @param {object} msg Сообщение D-Bus.
 	 */
-	async listener(msg) {
+	async #listener(msg) {
 		const path = msg.path;
 		if (!path?.startsWith(this.path) || !Array.isArray(msg.body))
 			return;
@@ -244,10 +431,9 @@ export class Bluetooth extends EventEmitter {
 	 * Ожидает обнаружения определенного Bluetooth-устройства.
 	 * Сначала проверяет кэш уже обнаруженных устройств. Если устройство не найдено,
 	 * запускает сканирование (если оно еще не запущено) и ждет события 'available'.
-	 * @async
 	 * @param {string} mac MAC-адрес устройства для ожидания.
 	 * @param {number|null} [ms=null] - Максимальное время ожидания в миллисекундах. Если null или 0, будет ждать бессрочно.
-	 * @returns {Promise<object>} Промис, который разрешается объектом конфигурации найденного устройства (`{ path, name, mac }`).
+	 * @returns {Promise<DeviceConfig & {path: string}>} Промис, который разрешается объектом конфигурации найденного устройства (`{ path, name, mac }`).
 	 * @throws {Error} Срабатывает, если время ожидания истекло до обнаружения устройства.
 	 */
 	async waitDevice(mac, ms = null) {
@@ -269,7 +455,7 @@ export class Bluetooth extends EventEmitter {
 				if (!isDiscovering)
 					this.stopDiscovery();
 			};
-			const onDeviceAvailable = config => {
+			const onDeviceAvailable = (/** @type {DeviceConfig & {path: string}} */ config) => {
 				this.client?.log('debug', `Device ${mac} was discovered via event.`);
 				cleanup();
 				resolve(config);
@@ -312,7 +498,7 @@ export class Bluetooth extends EventEmitter {
 			device = proxy.getInterface('org.bluez.Device1');
 		};
 		this.client?.log('debug', `Returning device interface for ${mac}`);
-		return this.constructor.createDbusProxy(new Device(device, proxy, this), device);
+		return createFallbackProxy(new BluetoothDevice(device, proxy, this), device);
 	};
 
 	/**
@@ -371,7 +557,7 @@ export class Bluetooth extends EventEmitter {
 		if (this.isDiscovering)
 			await this.stopDiscovery();
 		if (this.bus) {
-			this.bus.off('message', this.listener);
+			this.bus.off('message', this.#listener);
 			for (const device in this.connected) {
 				await this.connected[device].disconnect();
 			}
@@ -382,224 +568,3 @@ export class Bluetooth extends EventEmitter {
 		this.client?.log('info', 'Bluetooth instance destroyed.');
 	};
 };
-
-/**
- * Класс-обертка для Bluetooth-устройства.
- * @class
- */
-export class Device {
-	/**
-	 * @param {import('dbus-next').ProxyInterface} dbusInterface - Интерфейс org.bluez.Device1
-	 * @param {import('dbus-next').ProxyObject} proxy - Прокси-объект устройства
-	 * @param {Bluetooth} bluetooth - Экземпляр класса Bluetooth.
-	 */
-	constructor(dbusInterface, proxy, bluetooth) {
-		this.dbusInterface = dbusInterface;
-		this.proxy = proxy;
-		this.bluetooth = bluetooth;
-		this.client = bluetooth.client;
-		this.objectManager = null;
-		this.gattProfile = null;
-		this.characteristics = new Map();
-	};
-
-
-	/**
-	 * Возвращает уникальный идентификатор устройства в формате D-Bus (dev_XX_XX_XX_...).
-	 * Этот ID извлекается из пути D-Bus объекта.
-	 * @type {string}
-	 * @readonly
-	 */
-	get id() {
-		return this.proxy.path.split('/').pop();
-	};
-
-	/**
-	 * Устанавливает соединение с устройством.
-	 * @async
-	 * @returns {Promise<void>}
-	 */
-	async connect() {
-		await this.dbusInterface.Connect();
-		// const properties = this.proxy.getInterface('org.freedesktop.DBus.Properties');
-		// while (true) {
-		// 	await new Promise(resolve => setTimeout(resolve), 500);
-		// 	const servicesResolved = await properties.Get('org.bluez.Device1', 'ServicesResolved');
-		// 	if (servicesResolved.value)
-		// 		break;
-		// }
-		return new Promise(async (resolve, reject) => {
-			const properties = this.proxy.getInterface('org.freedesktop.DBus.Properties');
-			const isResolved = await properties.Get('org.bluez.Device1', 'ServicesResolved');
-			if (isResolved.value)
-				return resolve();
-			let timerId;
-			const onPropertiesChanged = changedProps => {
-				if (changedProps.ServicesResolved) {
-					clearTimeout(timerId);
-					this.bluetooth.off(`properties:${this.id}`, onPropertiesChanged);
-					resolve();
-				}
-			};
-			timerId = setTimeout(() => {
-				this.bluetooth.off(`properties:${this.id}`, onPropertiesChanged);
-				reject(new Error(`Timed out after 10s waiting for services to be resolved.`));
-			}, 10_000);
-			this.bluetooth.on(`properties:${this.id}`, onPropertiesChanged);
-		});
-	};
-
-	/**
-	 * Разрывает соединение с устройством.
-	 * @async
-	 * @returns {Promise<void>}
-	 */
-	async disconnect() {
-		return this.dbusInterface.Disconnect();
-	};
-
-	/**
-	 * Получает и кэширует экземпляр обертки для GATT-характеристики.
-	 * Метод является универсальным и поддерживает два режима работы:
-	 * 1. Поиск по UUID: передайте { service: 'uuid', characteristic: 'uuid' }.
-	 * 2. Прямое формирование пути: передайте { service: '0004', characteristic: '000f' }.
-	 * @async
-	 * @param {object} props - Описание характеристики.
-	 * @param {string} props.service - UUID сервиса или его короткий ID для пути.
-	 * @param {string} props.characteristic - UUID характеристики или ее короткий ID для пути.
-	 * @returns {Promise<Characteristic>} Прокси-объект характеристики.
-	 * @throws {Error} Если характеристика не найдена.
-	 */
-	async getCharacteristic({ service, characteristic }) {
-		let path;
-		const uuidMap = this.bluetooth.connected[this.id]?.constructor?.uuidMap;
-		if (uuidMap) {
-			if (service.includes('-') && uuidMap.services?.[service])
-				service = uuidMap.services[service];
-			if (characteristic.includes('-') && uuidMap.characteristics?.[characteristic])
-				characteristic = uuidMap.characteristics[characteristic];
-		}
-		if (service.includes('-') || characteristic.includes('-')) {
-			await this.discoverGattProfile();
-			const serviceInfo = this.gattProfile[service];
-			if (!serviceInfo)
-				throw new Error(`Service with UUID ${service} not found on device.`);
-			const charInfo = serviceInfo.characteristics[characteristic];
-			if (!charInfo)
-				throw new Error(`Characteristic with UUID ${characteristic} not found in service ${service}.`);
-			path = charInfo.path;
-		}else
-			path = `${this.proxy.path}/service${service}/char${characteristic}`;
-		if (this.characteristics.has(path))
-			return this.characteristics.get(path);
-		const proxy = await this.proxy.bus.getProxyObject('org.bluez', path);
-		const iface = proxy.getInterface('org.bluez.GattCharacteristic1')
-		const charProxied = Bluetooth.createDbusProxy(new Characteristic(iface), iface);
-		this.characteristics.set(path, charProxied);
-		return charProxied;
-	};
-
-	/**
-	 * Обнаруживает и кэширует полный GATT-профиль устройства (все сервисы и характеристики).
-	 * Этот метод является относительно дорогостоящей операцией и должен вызываться только при необходимости.
-	 * Результаты кэшируются для последующих вызовов.
-	 * @async
-	 * @returns {Promise<Map<string, {path: string, characteristics: Map<string, {path: string}>}>>}
-	 *          Карта, где ключ - UUID сервиса, а значение - объект с путем к сервису и картой его характеристик.
-	 */
-	async discoverGattProfile() {
-		if (this.gattProfile) {
-			this.client?.log('debug', `GATT profile for ${this.id} already cached. Returning cached version.`);
-			return this.gattProfile;
-		}
-		this.client?.log('info', `Discovering GATT profile for device ${this.id}...`);
-		if (!this.objectManager) {
-			this.client?.log('debug', `D-Bus ObjectManager not found, getting it now.`);
-			const bluezProxy = await this.proxy.bus.getProxyObject('org.bluez', '/');
-			this.objectManager = bluezProxy.getInterface('org.freedesktop.DBus.ObjectManager');
-		}
-		const managedObjects = await this.objectManager.GetManagedObjects();
-		this.client?.log('debug', `Got ${Object.keys(managedObjects).length} managed objects from D-Bus.`);
-		const services = {};
-		const characteristicsByServicePath = {};
-		for (const path in managedObjects) {
-			if (!path.startsWith(this.proxy.path))
-				continue;
-			const interfaces = managedObjects[path];
-			const serviceInterface = interfaces['org.bluez.GattService1'];
-			const charInterface = interfaces['org.bluez.GattCharacteristic1'];
-			if (serviceInterface) {
-				const uuid = serviceInterface.UUID.value;
-				this.client?.log('debug', `Found GATT Service: UUID=${uuid}, Path=${path}`);
-				services[uuid] = {
-					path,
-					characteristics: {}
-				};
-				characteristicsByServicePath[path] = services[uuid].characteristics;
-			} else if (charInterface) {
-				const parentServicePath = charInterface.Service.value;
-				const parentServiceChars = characteristicsByServicePath[parentServicePath];
-				if (parentServiceChars) {
-					const uuid = charInterface.UUID.value;
-					const flags = charInterface.Flags.value;
-					this.client?.log('debug', `  - Found GATT Characteristic: UUID=${uuid}, Flags=[${flags.join(', ')}], Path=${path}`);
-					parentServiceChars[uuid] = { path, flags };
-				} else
-					this.client?.log('warn', `Found characteristic ${path} but its parent service ${parentServicePath} was not found in the map.`);
-			}
-		}
-		this.gattProfile = services;
-		this.client?.log('info', `GATT profile discovery complete for ${this.id}. Found ${Object.keys(services).length} services.`);
-		return this.gattProfile;
-	};
-};
-
-/**
- * Класс-обертка для GATT-характеристики.
- * @class
- */
-export class Characteristic {
-	/**
-	 * @param {import('dbus-next').ProxyInterface} dbusInterface - Интерфейс org.bluez.GattCharacteristic1
-	 */
-	constructor(dbusInterface) {
-		this.dbusInterface = dbusInterface;
-	};
-
-	/**
-	 * Включает уведомления для этой характеристики.
-	 * @async
-	 */
-	async startNotifications() {
-		return this.dbusInterface.StartNotify();
-	};
-
-	/**
-	 * Отключает уведомления для этой характеристики.
-	 * @async
-	 */
-	async stopNotifications() {
-		return this.dbusInterface.StopNotify();
-	};
-
-	/**
-	 * Читает значение характеристики.
-	 * @async
-	 * @returns {Promise<Buffer>} Промис, который разрешится буфером со значением.
-	 */
-	async readValue() {
-		return this.dbusInterface.ReadValue({});
-	};
-
-	/**
-	 * Записывает значение в характеристику.
-	 * @async
-	 * @param {Buffer} buffer - Буфер данных для записи.
-	 * @param {object} [options] - Опции для записи (например, { type: 'command' }).
-	 */
-	async writeValue(buffer) {
-		return this.dbusInterface.WriteValue(buffer, {});
-	};
-};
-
-export default Bluetooth;

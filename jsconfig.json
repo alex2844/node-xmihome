@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"checkJs": true,
+		"allowJs": true,
+		"noEmit": true,
+		"noImplicitAny": false,
+		"resolveJsonModule": true,
+		"maxNodeModuleJsDepth": 0,
+		"target": "ESNext",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"paths": {
+			"xmihome-devices": ["packages/devices/src/index.js"],
+			"xmihome-devices/*": ["packages/devices/src/*"],
+			"xmihome": ["packages/node/src/index.js"],
+			"xmihome/*": ["packages/node/src/*"],
+			"node-red-contrib-xmihome/*": ["packages/node-red/nodes/*"]
+		},
+		"baseUrl": "."
+	},
+	"include": [
+		"packages/*/src/**/*.js",
+		"packages/*/bin/**/*.js",
+		"packages/*/build.js"
+	],
+	"exclude": ["node_modules"]
+}

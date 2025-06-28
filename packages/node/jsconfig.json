@@ -1,0 +1,11 @@
+{
+	"compilerOptions": {
+		"maxNodeModuleJsDepth": 0
+	},
+	"extends": "../../jsconfig.json",
+	"include": [
+		"src/**/*.js",
+		"bin/**/*.js",
+		"build.js"
+	]
+}

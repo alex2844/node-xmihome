@@ -1,0 +1,115 @@
+<div class="form-row">
+	<label for="node-input-settings"><i class="fa fa-cog"></i> <span data-i18n="device.label.settings"></span></label>
+	<input id="node-input-settings" />
+</div>
+<div class="form-row">
+	<label for="node-input-name"><i class="fa fa-tag"></i> <span data-i18n="device.label.name"></span></label>
+	<input type="text" id="node-input-name" data-i18n="[placeholder]device.placeholder.name" />
+</div>
+<fieldset>
+	<legend data-i18n="device.label.device"></legend>
+	<div class="form-row" id="node-config-row-device">
+		<label for="node-input-deviceSource"><i class="fa fa-cogs"></i> <span data-i18n="device.label.source"></span></label>
+		<select id="node-input-deviceSource" style="width: 70%">
+			<option value="input" data-i18n="device.label.deviceSourceInput"></option>
+			<option value="discovered" data-i18n="device.label.deviceSourceDiscovered"></option>
+			<option value="msg">msg.device</option>
+		</select>
+		<div hidden>
+			<input type="text" id="node-input-device" />
+			<input type="hidden" id="node-input-deviceType" />
+		</div>
+	</div>
+	<div id="node-device-typedinput-container">
+		<div class="form-row">
+			<label for="node-input-deviceIdType"><i class="fa fa-id-badge"></i> <span data-i18n="device.label.deviceIdType"></span></label>
+			<select id="node-input-deviceIdType" style="width: 70%">
+				<option value="" data-i18n="device.label.deviceIdTypeFull"></option>
+				<option value="cloud">Cloud ID (DID)</option>
+				<option value="miio">MiIO (IP & Token)</option>
+				<option value="bluetooth">Bluetooth (MAC)</option>
+			</select>
+		</div>
+		<div class="form-row device-config device-config-cloud">
+			<label for="node-input-device-id"><i class="fa fa-cloud"></i> <span data-i18n="device.label.deviceId"></span></label>
+			<input type="text" id="node-input-device-id" data-i18n="[placeholder]device.placeholder.deviceId" />
+		</div>
+		<div class="form-row device-config device-config-miio">
+			<label for="node-input-device-address"><i class="fa fa-wifi"></i> <span data-i18n="device.label.deviceAddress"></span></label>
+			<input type="text" id="node-input-device-address" data-i18n="[placeholder]device.placeholder.deviceAddress" />
+		</div>
+		<div class="form-row device-config device-config-bluetooth">
+			<label for="node-input-device-mac"><i class="fa fa-bluetooth"></i> <span data-i18n="device.label.deviceMac"></span></label>
+			<input type="text" id="node-input-device-mac" data-i18n="[placeholder]device.placeholder.deviceMac" />
+		</div>
+		<div class="form-row device-config device-config-miio device-config-bluetooth">
+			<label for="node-input-device-token">
+				<i class="fa fa-key"></i>
+				<span data-i18n="device.label.deviceToken"></span>
+				<small class="device-config device-config-bluetooth" data-i18n="device.label.deviceTokenHint"></small>
+			</label>
+			<input type="text" id="node-input-device-token" data-i18n="[placeholder]device.placeholder.deviceToken" />
+		</div>
+		<div class="form-row device-config">
+			<label for="node-input-device-model">
+				<i class="fa fa-cube"></i>
+				<span data-i18n="device.label.deviceModel"></span>
+				<small data-i18n="device.label.deviceModelHint"></small>
+			</label>
+			<div style="width: 70%; display: inline-flex;">
+				<input type="text" id="node-input-device-model" data-i18n="[placeholder]device.placeholder.deviceModel" style="flex-grow: 1" />
+				<button id="node-button-open-model" class="red-ui-button" style="margin-left: 10px">
+					<i class="fa fa-external-link"></i>
+				</button>
+			</div>
+			<div style="font-size: 0.8em; color: #888;" data-i18n="device.label.deviceModelHelp"></div>
+		</div>
+	</div>
+	<div class="form-row" id="node-device-discovered-container" hidden>
+		<label for="node-input-discovered-device"><i class="fa fa-list"></i> <span data-i18n="device.label.discoveredDevice"></span></label>
+		<div style="width: 70%; display: inline-flex;">
+			<select id="node-input-discovered-device" style="flex-grow: 1"></select>
+			<button id="node-button-refresh-devices" class="red-ui-button" style="margin-left: 10px">
+				<i class="fa fa-refresh"></i>
+			</button>
+		</div>
+		<div style="font-size: 0.8em; color: #888;" id="discovered-msg"></div>
+	</div>
+</fieldset>
+<fieldset>
+	<legend data-i18n="device.label.action"></legend>
+	<div class="form-row">
+		<label for="node-input-action"><i class="fa fa-tasks"></i> <span data-i18n="device.label.action"></span></label>
+		<select id="node-input-action" style="width: 70%">
+			<option value="getProperties" data-i18n="device.label.actionGetAll"></option>
+			<option value="getProperty" data-i18n="device.label.actionGet"></option>
+			<option value="setProperty" data-i18n="device.label.actionSet"></option>
+			<option value="subscribe" data-i18n="device.label.actionSubscribe"></option>
+			<option value="unsubscribe" data-i18n="device.label.actionUnsubscribe"></option>
+		</select>
+	</div>
+	<div class="form-row" id="node-config-row-property">
+		<label for="node-input-propertySource"><i class="fa fa-cogs"></i> <span data-i18n="device.label.property"></span></label>
+		<select id="node-input-propertySource" style="width: 110px; margin-right: 5px;">
+			<option value="input" data-i18n="device.label.propertySourceInput"></option>
+			<option value="msg">msg.property</option>
+		</select>
+		<span id="node-property-typedinput-container">
+			<input type="text" id="node-input-property" data-i18n="[placeholder]device.placeholder.property" style="width: calc(70% - 120px)" />
+			<input type="hidden" id="node-input-propertyType" />
+		</span>
+	</div>
+	<div class="form-row" id="node-config-row-value">
+		<label for="node-input-value"><i class="fa fa-sign-in"></i> <span data-i18n="device.label.value"></span></label>
+		<input type="text" id="node-input-value" style="width: 70%" />
+		<input type="hidden" id="node-input-valueType" />
+	</div>
+</fieldset>
+<fieldset>
+	<legend data-i18n="device.label.output"></legend>
+	<div class="form-row">
+		<label for="node-input-topic"><i class="fa fa-envelope-o"></i> <span data-i18n="device.label.topic"></span></label>
+		<input type="text" id="node-input-topic" data-i18n="[placeholder]device.placeholder.topic" style="width: 70%" />
+		<input type="hidden" id="node-input-topicType" />
+	</div>
+</fieldset>

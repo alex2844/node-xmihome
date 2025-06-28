@@ -1,0 +1,42 @@
+<div class="form-row">
+	<label for="node-config-input-name"><i class="fa fa-tag"></i> <span data-i18n="config.label.name"></span></label>
+	<input type="text" id="node-config-input-name" data-i18n="[placeholder]config.placeholder.name" />
+</div>
+<div class="form-row">
+	<label style="width:auto" for="node-config-input-debug"><i class="fa fa-bug"></i> <span data-i18n="config.label.debug"></span></label>
+	<input type="checkbox" id="node-config-input-debug" style="display:inline-block; width:auto; vertical-align:top;" />
+</div>
+<fieldset>
+	<legend data-i18n="config.label.authentication"></legend>
+	<div class="form-row">
+		<label for="node-config-input-username"><i class="fa fa-user"></i> <span data-i18n="config.label.username"></span></label>
+		<input type="text" id="node-config-input-username" data-i18n="[placeholder]config.placeholder.username" />
+	</div>
+	<div class="form-row">
+		<label for="node-config-input-password"><i class="fa fa-key"></i> <span data-i18n="config.label.password"></span></label>
+		<input type="password" id="node-config-input-password" />
+	</div>
+	<div class="form-row">
+		<label for="node-config-input-country"><i class="fa fa-globe"></i> <span data-i18n="config.label.country"></span></label>
+		<select id="node-config-input-country" style="width: 70%">
+			<option value='sg'>sg</option>
+			<option value='cn'>cn</option>
+			<option value='ru'>ru</option>
+			<option value='us'>us</option>
+			<option value='tw'>tw</option>
+			<option value='de'>de</option>
+		</select>
+	</div>
+	<fieldset>
+		<legend data-i18n="config.label.defaults"></legend>
+		<div class="form-row">
+			<label for="node-config-input-connectionType"><i class="fa fa-plug"></i> <span data-i18n="config.label.connectionType"></span></label>
+			<select id="node-config-input-connectionType" style="width: 70%">
+				<option value="auto" data-i18n="config.label.connAuto"></option>
+				<option value="cloud" data-i18n="config.label.connCloud"></option>
+				<option value="miio" data-i18n="config.label.connMiio"></option>
+				<option value="bluetooth" data-i18n="config.label.connBluetooth"></option>
+			</select>
+		</div>
+	</fieldset>
+</fieldset>
