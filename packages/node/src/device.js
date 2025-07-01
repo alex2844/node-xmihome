@@ -322,7 +322,6 @@ export default class Device extends EventEmitter {
 
 	/**
 	 * Выполняет специфичную для устройства логику аутентификации.
-	 * @protected
 	 */
 	async auth() {};
 

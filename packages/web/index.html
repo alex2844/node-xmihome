@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>node-xmihome</title>
+		<link rel="stylesheet" href="./public/style.css" />
+	</head>
+	<body>
+		<h1>node-xmihome</h1>
+		<div class="control-group">
+			<select id="device-selector"></select>
+			<select id="model-selector" hidden></select>
+			<button id="connect-button" disabled>Connect</button>
+		</div>
+		<div class="control-group" id="device-panel" hidden>
+			<h2 id="device-name"></h2>
+			<div id="device-actions"></div>
+			<button id="disconnect-button">Disconnect</button>
+		</div>
+		<h3>Logs:</h3>
+		<pre id="log-output"></pre>
+		<script src="./dist/bundle.js"></script>
+	</body>
+</html>

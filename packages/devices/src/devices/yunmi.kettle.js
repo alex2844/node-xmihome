@@ -1,4 +1,4 @@
-import { Device } from 'xmihome';
+import Device from 'xmihome/device.js';
 import crypto from 'crypto';
 /** @import { XiaomiMiHome } from 'xmihome' */
 /** @import { Config, Property, UuidMapping } from 'xmihome/device.js' */

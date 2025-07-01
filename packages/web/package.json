@@ -1,0 +1,17 @@
+{
+	"name": "xmihome-web",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"test": "tsc -p ./jsconfig.json",
+		"build": "bun ./build.js",
+		"dev": "bun ./build.js"
+	},
+	"dependencies": {
+		"xmihome-devices": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/web-bluetooth": "^0.0.21"
+	}
+}

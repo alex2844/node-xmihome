@@ -1,0 +1,49 @@
+body {
+	font-family: sans-serif;
+	line-height: 1.5;
+	padding: 1em;
+}
+
+.control-group {
+	margin-bottom: 1em;
+	padding: 1em;
+	border: 1px solid #ccc;
+	border-radius: 5px;
+}
+
+#device-selector,
+#model-selector,
+#connect-button {
+	font-size: 1.1em;
+	padding: 0.5em;
+}
+
+#device-actions {
+	margin-top: 1em;
+}
+
+.action-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 5px;
+}
+
+.action-item label {
+	font-weight: bold;
+	min-width: 150px;
+}
+
+.action-item input {
+	flex-grow: 1;
+}
+
+#log-output {
+	white-space: pre-wrap;
+	background-color: #f4f4f4;
+	border: 1px solid #ccc;
+	padding: 10px;
+	max-height: 400px;
+	overflow-y: auto;
+	margin-top: 1em;
+}

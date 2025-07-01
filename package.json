@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"test": "npm run test --workspaces --if-present",
+		"test": "tsc -p ./jsconfig.json",
 		"build": "npm run build --workspaces --if-present",
 		"clean": "rm -rf ./packages/*/dist"
 	},

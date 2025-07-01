@@ -27,7 +27,7 @@ async function dirExists(dirPath) {
 			return false;
 		throw error;
 	}
-}
+};
 
 async function main() {
 	await rm(DIST_DIR, { recursive: true, force: true });
@@ -57,7 +57,7 @@ async function main() {
 	await Promise.all(nodeNames.map(buildNode));
 	await copyAllDocs(nodeNames);
 	await copyAllLocales(nodeNames);
-}
+};
 
 // --- Функция сборки одного узла ---
 async function buildNode(nodeName) {
@@ -69,6 +69,7 @@ async function buildNode(nodeName) {
 	if (await Bun.file(runtimeSrc).exists()) {
 		const external = Object.keys(packageJson.dependencies || {});
 		const buildResult = await Bun.build({
+			// packages?: "bundle" | "external"; // TODO
 			external,
 			entrypoints: [runtimeSrc],
 			outdir: nodeDistDir,
@@ -127,7 +128,7 @@ async function buildNode(nodeName) {
 		}
 		console.log(`🎨 Copied icons for ${nodeName}`);
 	}
-}
+};
 
 // --- Функция копирования всех Документаций ---
 async function copyAllDocs(nodeNames) {
@@ -153,7 +154,7 @@ async function copyAllDocs(nodeNames) {
 	}
 	if (copied)
 		console.log('🌍 Copied docs files.');
-}
+};
 
 // --- Функция копирования всех локалей ---
 async function copyAllLocales(nodeNames) {
@@ -179,7 +180,7 @@ async function copyAllLocales(nodeNames) {
 	}
 	if (copied)
 		console.log('🌍 Copied locale files.');
-}
+};
 
 main().catch(err => {
 	console.error('Build failed:', err);

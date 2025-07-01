@@ -1,4 +1,4 @@
-import { Device } from 'xmihome';
+import Device from 'xmihome/device.js';
 /** @import { Property, UuidMapping } from 'xmihome/device.js' */
 
 /**

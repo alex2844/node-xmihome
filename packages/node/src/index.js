@@ -449,7 +449,9 @@ export function sleep(ms, signal = undefined) {
 				reject(new Error('Operation cancelled'));
 			};
 			signal.addEventListener('abort', abortHandler, { once: true });
-			setTimeout(() => signal.removeEventListener('abort', abortHandler), ms);
+			const cleanup = () => signal.removeEventListener('abort', abortHandler);
+			const promise = Promise.resolve();
+			promise.then(cleanup, cleanup);
 		}
 	});
 };
