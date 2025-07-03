@@ -65,15 +65,10 @@ const buildOptions = {
 	plugins: [aliasPlugin, polyfillPlugin]
 };
 
-async function server() {
+export async function server() {
 	console.log('🚀 Starting development server with live reload...');
 	Bun.serve({
 		port: 3000,
-		/**
-		 * Обработчик всех входящих HTTP-запросов.
-		 * @param {Request} req - Объект запроса.
-		 * @returns {Promise<Response>} - Объект ответа.
-		 */
 		async fetch(req) {
 			const url = new URL(req.url);
 			const pathname = url.pathname;
@@ -91,10 +86,6 @@ async function server() {
 				return new Response(Bun.file(`.${url.pathname}`));
 			return new Response('Not Found', { status: 404 });
 		},
-		/**
-		 * Обработчик ошибок сервера.
-		 * @returns {Response}
-		 */
 		error() {
 			return new Response(null, { status: 404 });
 		}
@@ -102,7 +93,7 @@ async function server() {
 	console.log('✅ Server listening on http://localhost:3000');
 };
 
-async function build() {
+export default async function build() {
 	console.time('✨ Build complete');
 
 	await rm(DIST_DIR, { recursive: true, force: true });
@@ -123,7 +114,9 @@ async function build() {
 	console.timeEnd('✨ Build complete');
 };
 
-if (process.env.npm_lifecycle_event === 'dev')
-	server();
-else
-	build();
+if (import.meta.path === Bun.main) {
+	if (process.env.npm_lifecycle_event === 'dev')
+		server();
+	else
+		build();
+}

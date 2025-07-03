@@ -6,10 +6,13 @@
 	"scripts": {
 		"test": "tsc -p ./jsconfig.json",
 		"build": "bun ./build.js",
+		"start": "node-red --settings settings.json",
+		"dev": "nodemon --exec 'bun run build && bun run start' --watch src --watch locales --watch docs -e js,json,html,md",
 		"prepublishOnly": "npm run build"
 	},
 	"files": [
-		"./dist/"
+		"./dist/",
+		"./examples"
 	],
 	"node-red": {
 		"nodes": {
@@ -24,6 +27,14 @@
 	"devDependencies": {
 		"@types/bun": "^1.2.17",
 		"@types/express": "^5.0.3",
-		"@types/node-red": "^1.3.5"
+		"@types/node-red": "^1.3.5",
+		"node-red": "^4.0.9",
+		"nodemon": "^3.1.10"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/alex2844/node-xmihome.git",
+		"directory": "packages/node-red"
 	}
 }

@@ -7,7 +7,7 @@ import miio from 'mijia-io';
  */
 export default class Miot {
 	/**
-	 * Находит спецификацию модели устройства на miot-spec.org.
+	 * Находит спецификацию модели устройства на home.miot-spec.com.
 	 * @param {string} model Модель устройства.
 	 * @returns {Promise<object|undefined>} Объект спецификации модели или `undefined`, если модель не найдена.
 	 */

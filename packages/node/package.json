@@ -23,5 +23,11 @@
 	},
 	"optionalDependencies": {
 		"dbus-next": "github:dcodeIO/node-dbus-next"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/alex2844/node-xmihome.git",
+		"directory": "packages/node"
 	}
 }

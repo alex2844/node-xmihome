@@ -13,5 +13,11 @@
 	},
 	"devDependencies": {
 		"@types/web-bluetooth": "^0.0.21"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/alex2844/node-xmihome.git",
+		"directory": "packages/web"
 	}
 }

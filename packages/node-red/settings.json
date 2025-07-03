@@ -1,0 +1,12 @@
+{
+	"uiPort": 3000,
+	"userDir": ".dev",
+	"flowFile": "flows.json",
+	"logging": {
+		"console": {
+			"level": "debug",
+			"metrics": false,
+			"audit": false
+		}
+	}
+}

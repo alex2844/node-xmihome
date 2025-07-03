@@ -3,12 +3,10 @@
 import path from 'path';
 import { rm, mkdir, readdir, stat } from 'fs/promises';
 
-console.time('✨ Build complete');
-
 const SRC_DIR = path.resolve(import.meta.dir, 'src');
-const DIST_DIR = path.resolve(import.meta.dir, 'dist');
-const DOCS_DIR = path.resolve(import.meta.dir, 'docs');
 const LOCALES_DIR = path.resolve(import.meta.dir, 'locales');
+const DOCS_DIR = path.resolve(import.meta.dir, 'docs');
+const DIST_DIR = path.resolve(import.meta.dir, 'dist');
 
 const packageJsonPath = path.resolve(import.meta.dir, 'package.json');
 const packageJson = await Bun.file(packageJsonPath).json();
@@ -16,8 +14,12 @@ const packageJson = await Bun.file(packageJsonPath).json();
 const nodePrefix = packageJson.name?.split('-').pop();
 if (!nodePrefix)
 	throw new Error(`Could not determine node prefix from package name: ${packageJson.name}`);
-console.log(`📦 Using node prefix: "${nodePrefix}"`);
 
+/**
+ * Проверяет, существует ли директория по указанному пути.
+ * @param {string} dirPath - Путь к директории.
+ * @returns {Promise<boolean>}
+ */
 async function dirExists(dirPath) {
 	try {
 		const stats = await stat(dirPath);
@@ -29,51 +31,23 @@ async function dirExists(dirPath) {
 	}
 };
 
-async function main() {
-	await rm(DIST_DIR, { recursive: true, force: true });
-	console.log(`🧹 Cleaned ${DIST_DIR} directory.`);
-
-	const distNodesDir = path.join(DIST_DIR, 'nodes');
-	await mkdir(distNodesDir, { recursive: true });
-
-	const nodesSrcDir = path.join(SRC_DIR, 'nodes');
-	if (!(await dirExists(nodesSrcDir))) {
-		console.warn(`⚠️  Source directory for nodes not found at ${nodesSrcDir}. Nothing to build.`);
-		return;
-	}
-
-	const nodeDirEntries = await readdir(nodesSrcDir, { withFileTypes: true });
-	const nodeNames = nodeDirEntries
-		.filter(dirent => dirent.isDirectory())
-		.map(dirent => dirent.name);
-
-	if (nodeNames.length === 0) {
-		console.log('🤷 No nodes found to build.');
-		return;
-	}
-
-	console.log(`🔍 Found ${nodeNames.length} nodes: ${nodeNames.join(', ')}`);
-
-	await Promise.all(nodeNames.map(buildNode));
-	await copyAllDocs(nodeNames);
-	await copyAllLocales(nodeNames);
-};
-
-// --- Функция сборки одного узла ---
+/**
+ * Выполняет сборку одного узла Node-RED по его имени.
+ * @param {string} nodeName - Имя узла (совпадает с именем директории в `src/nodes`).
+ * @returns {Promise<void>}
+ */
 async function buildNode(nodeName) {
 	const nodeSrcDir = path.join(SRC_DIR, 'nodes', nodeName);
 	const nodeDistDir = path.join(DIST_DIR, 'nodes');
 
-	// Сборка JS (runtime)
+	// 1. Сборка JS для runtime (Node.js)
 	const runtimeSrc = path.join(nodeSrcDir, 'runtime.js');
 	if (await Bun.file(runtimeSrc).exists()) {
-		const external = Object.keys(packageJson.dependencies || {});
 		const buildResult = await Bun.build({
-			// packages?: "bundle" | "external"; // TODO
-			external,
 			entrypoints: [runtimeSrc],
 			outdir: nodeDistDir,
 			naming: `${nodeName}.js`,
+			packages: 'external',
 			target: 'node',
 			minify: true
 		});
@@ -83,10 +57,10 @@ async function buildNode(nodeName) {
 			console.error(`❌ Build failed for ${nodeName}.js:`, buildResult.logs);
 	}
 
-	// Сборка HTML
+	// 2. Сборка HTML-части (UI)
 	const finalHtmlParts = [];
 
-	// UI Script
+	// 2a. Сборка UI-скрипта для браузера
 	const uiSrc = path.join(nodeSrcDir, 'ui.js');
 	if (await Bun.file(uiSrc).exists()) {
 		const buildResult = await Bun.build({
@@ -102,20 +76,21 @@ async function buildNode(nodeName) {
 			console.error(`❌ Build failed for ${nodeName}/ui.js:`, buildResult.logs);
 	}
 
-	// HTML Template
+	// 2b. Добавление HTML-шаблона
 	const templateSrc = path.join(nodeSrcDir, 'template.html');
 	if (await Bun.file(templateSrc).exists()) {
 		const content = await Bun.file(templateSrc).text();
 		finalHtmlParts.push(`<script type="text/html" data-template-name="${nodePrefix}-${nodeName}">\n${content}</script>`);
 	}
 
+	// 2c. Запись итогового .html файла
 	if (finalHtmlParts.length > 0) {
 		const htmlDest = path.join(nodeDistDir, `${nodeName}.html`);
 		await Bun.write(htmlDest, finalHtmlParts.join('\n\n'));
 		console.log(`📦 Assembled ${nodeName}.html`);
 	}
 
-	// Иконки
+	// 3. Копирование иконок
 	const iconSrcDir = path.join(nodeSrcDir, 'icons');
 	if (await dirExists(iconSrcDir)) {
 		const iconDistDir = path.join(nodeDistDir, 'icons');
@@ -130,7 +105,11 @@ async function buildNode(nodeName) {
 	}
 };
 
-// --- Функция копирования всех Документаций ---
+/**
+ * Находит и копирует файлы документации (.md) для всех узлов.
+ * @param {string[]} nodeNames - Список имен всех собираемых узлов.
+ * @returns {Promise<void>}
+ */
 async function copyAllDocs(nodeNames) {
 	if (!(await dirExists(DOCS_DIR)))
 		return;
@@ -156,7 +135,11 @@ async function copyAllDocs(nodeNames) {
 		console.log('🌍 Copied docs files.');
 };
 
-// --- Функция копирования всех локалей ---
+/**
+ * Находит и копирует файлы локализации (.json) для всех узлов.
+ * @param {string[]} nodeNames - Список имен всех собираемых узлов.
+ * @returns {Promise<void>}
+ */
 async function copyAllLocales(nodeNames) {
 	if (!(await dirExists(LOCALES_DIR)))
 		return;
@@ -182,9 +165,42 @@ async function copyAllLocales(nodeNames) {
 		console.log('🌍 Copied locale files.');
 };
 
-main().catch(err => {
-	console.error('Build failed:', err);
-	process.exit(1);
-}).then(() => {
+export default async function build() {
+	console.time('✨ Build complete');
+	console.log(`📦 Using node prefix: "${nodePrefix}"`);
+
+	await rm(DIST_DIR, { recursive: true, force: true });
+	console.log(`🧹 Cleaned ${DIST_DIR} directory.`);
+
+	const distNodesDir = path.join(DIST_DIR, 'nodes');
+	await mkdir(distNodesDir, { recursive: true });
+
+	const nodesSrcDir = path.join(SRC_DIR, 'nodes');
+	if (!(await dirExists(nodesSrcDir))) {
+		console.warn(`⚠️  Source directory for nodes not found at ${nodesSrcDir}. Nothing to build.`);
+		return;
+	}
+
+	const nodeDirEntries = await readdir(nodesSrcDir, { withFileTypes: true });
+	const nodeNames = nodeDirEntries
+		.filter(dirent => dirent.isDirectory())
+		.map(dirent => dirent.name);
+
+	if (nodeNames.length === 0) {
+		console.log('🤷 No nodes found to build.');
+		return;
+	}
+
+	console.log(`🔍 Found ${nodeNames.length} nodes: ${nodeNames.join(', ')}`);
+
+	await Promise.all([
+		...nodeNames.map(buildNode),
+		copyAllDocs(nodeNames),
+		copyAllLocales(nodeNames)
+	]);
+
 	console.timeEnd('✨ Build complete');
-});
+};
+
+if (import.meta.path === Bun.main)
+	build();

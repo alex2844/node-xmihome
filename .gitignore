@@ -2,3 +2,4 @@ node_modules
 xmihome_bluetooth.conf
 dist
 .env
+.dev

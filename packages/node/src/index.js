@@ -326,7 +326,9 @@ export default class XiaomiMiHome extends EventEmitter {
 			if (discoveryStopped)
 				return;
 			const isDuplicate = devices.some(d =>
-				(d.address && d.address === device.address) || (d.mac && d.mac === device.mac)
+				(d.id && d.id === device.id) ||
+				(d.address && d.address === device.address) ||
+				(d.mac && d.mac === device.mac)
 			);
 			if (isDuplicate)
 				return;
@@ -344,11 +346,13 @@ export default class XiaomiMiHome extends EventEmitter {
 						return;
 					const id = (dev.id || '').toString();
 					const model = dev.hostname?.replace(/_.*$/, '').replace(/-/g, '.');
-					handleDeviceFound({
-						id, model,
+					const devConfig = this.config.devices?.find(d => (d.id === id) || (d.address === dev.address));
+					handleDeviceFound(mergePreferDefined(devConfig, {
+						id,
 						address: dev.address,
-						token: dev.token || this.config.devices?.find(d => d.id === id)?.token,
-					}, 'miio');
+						token: dev.token,
+						model: (model?.split('.').length >= 3) ? model : undefined,
+					}, ['isOnline']), 'miio');
 				};
 				browser.on('available', miioListener);
 				cleanupTasks.push(() => {
@@ -363,13 +367,12 @@ export default class XiaomiMiHome extends EventEmitter {
 					if (discoveryStopped)
 						return;
 					const devModels = Device.findModel(dev)?.models;
-					const devConfig = this.config.devices?.find(d => devModels?.includes(d.model) || d.name === dev.name);
-					handleDeviceFound({
+					const devConfig = this.config.devices?.find(d => (d.mac === dev.mac));
+					handleDeviceFound(mergePreferDefined(devConfig, {
 						name: dev.name,
 						mac: dev.mac,
-						token: devConfig?.token,
-						model: devConfig?.model || devModels?.[0],
-					}, 'bluetooth');
+						model: devModels?.[0]
+					}, ['isOnline']), 'bluetooth');
 				};
 				try {
 					this.bluetooth.on('available', btListener);
@@ -455,6 +458,21 @@ export function sleep(ms, signal = undefined) {
 		}
 	});
 };
+
+/**
+ * Сливает два объекта. Свойства из `priorityObj` имеют приоритет,
+ * но только если их значение не `undefined`.
+ * @param {object} [priority={}] - Объект, чьи значения в приоритете.
+ * @param {object} [base={}] - Базовый объект со значениями по умолчанию.
+ * @param {string[]} [exclude=[]] - Массив ключей, которые нужно игнорировать в `priority` объекте.
+ * @returns {object} Новый объединенный объект.
+ */
+export function mergePreferDefined(priority = {}, base = {}, exclude = []) {
+	const definedPriorityValues = Object.fromEntries(
+		Object.entries(priority).filter(([key, value]) => ((value !== undefined) && !exclude.includes(key)))
+	);
+	return { ...base, ...definedPriorityValues };
+}
 
 /**
  * Создает Proxy-обертку, которая объединяет два объекта.
