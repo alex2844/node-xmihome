@@ -7,9 +7,6 @@
 		".": "./src/index.js",
 		"./*": "./src/*"
 	},
-	"dependencies": {
-		"xmihome": "workspace:*"
-	},
 	"license": "MIT",
 	"repository": {
 		"type": "git",
