@@ -18,16 +18,32 @@ import {
  */
 
 /**
- * @typedef {object} Property
- * @property {('read'|'write'|'notify')[]} access - Общее: доступные операции.
- * @property {string} [service] - Bluetooth: UUID сервиса.
- * @property {string} [characteristic] - Bluetooth: UUID характеристики.
- * @property {number} [siid] - MIoT: ID сервиса.
- * @property {number} [piid] - MIoT: ID свойства.
- * @property {('bool'|'float'|'uint8'|'string')} [format] - MIoT: формат данных.
- * @property {(buf: Buffer) => any} [read] - Функция парсинга для чтения.
- * @property {(data: any) => Buffer} [write] - Функция кодирования для записи.
- * @property {(buf: Buffer) => any} [notify] - Функция парсинга для уведомлений.
+ * @typedef {{
+ *   service: string;
+ *   characteristic: string;
+ *   siid?: never;
+ *   piid?: never;
+ *   format?: never;
+ * }} BluetoothProperty
+ */
+
+/**
+ * @typedef {{
+ *   siid: number;
+ *   piid: number;
+ *   format: 'bool'|'float'|'uint8'|'string';
+ *   service?: never;
+ *   characteristic?: never;
+ * }} MiotProperty
+ */
+
+/**
+ * @typedef {{
+ *   access: ('read'|'write'|'notify')[];
+ *   read?: (buf: Buffer) => any;
+ *   notify?: (buf: Buffer) => any;
+ *   write?: (data: any) => Buffer;
+ * } & (BluetoothProperty | MiotProperty)} Property
  */
 
 /**

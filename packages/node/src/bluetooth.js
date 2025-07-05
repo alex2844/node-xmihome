@@ -123,7 +123,6 @@ export class BluetoothDevice {
 	 * Метод является универсальным и поддерживает два режима работы:
 	 * 1. Поиск по UUID: передайте { service: 'uuid', characteristic: 'uuid' }.
 	 * 2. Прямое формирование пути: передайте { service: '0004', characteristic: '000f' }.
-	 * @async
 	 * @param {object} props - Описание характеристики.
 	 * @param {string} props.service - UUID сервиса или его короткий ID для пути.
 	 * @param {string} props.characteristic - UUID характеристики или ее короткий ID для пути.
@@ -270,7 +269,6 @@ export default class Bluetooth extends EventEmitter {
 
 	/**
 	 * Инициализирует адаптер Bluetooth по умолчанию.
-	 * @async
 	 * @param {string} [device='hci0'] Имя адаптера Bluetooth.
 	 * @returns {Promise<object>} Интерфейс адаптера Bluetooth.
 	 * @throws {Error} Если нет доступа к Bluetooth сервисам через D-Bus.
@@ -473,7 +471,6 @@ export default class Bluetooth extends EventEmitter {
 	/**
 	 * Получает интерфейс устройства Bluetooth по MAC-адресу.
 	 * Если устройство не найдено в кэше, выполняет поиск устройства.
-	 * @async
 	 * @param {string} mac MAC-адрес устройства.
 	 * @returns {Promise<object>} Прокси-объект интерфейса устройства Bluetooth.
 	 * @throws {Error} Если произошла ошибка D-Bus или устройство не найдено в течение таймаута.
@@ -503,7 +500,6 @@ export default class Bluetooth extends EventEmitter {
 
 	/**
 	 * Запускает обнаружение Bluetooth устройств.
-	 * @async
 	 * @param {string[]} [filters] Массив UUID фильтров для обнаружения устройств.
 	 * @returns {Promise<void>}
 	 */
@@ -529,7 +525,6 @@ export default class Bluetooth extends EventEmitter {
 
 	/**
 	 * Останавливает обнаружение Bluetooth устройств.
-	 * @async
 	 * @returns {Promise<void>}
 	 */
 	async stopDiscovery() {
@@ -549,7 +544,6 @@ export default class Bluetooth extends EventEmitter {
 
 	/**
 	 * Освобождает ресурсы и отключается от Bluetooth адаптера.
-	 * @async
 	 * @returns {Promise<void>}
 	 */
 	async destroy() {

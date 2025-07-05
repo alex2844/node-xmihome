@@ -6,23 +6,25 @@ import Device from 'xmihome/device.js';
  * @extends Device
  */
 export default class extends Device {
-	/**
-	 * Название устройства.
-	 * @type {string}
-	 */
+	/** @type {string} */
 	static name = 'Xiaomi Smart Humidifier 2';
 
-	/**
-	 * Список поддерживаемых моделей устройств.
-	 * @type {string[]}
-	 */
+	/** @type {string[]} */
 	static models = [
 		'deerma.humidifier.jsq2w'
 	];
 
 	/**
-	 * Описание свойств устройства и их параметров для взаимодействия через MiIO.
-	 * @type {Object.<string, Property>}
+	 * @type {({
+	 *   on: Property,
+	 *   current_temperature: Property,
+	 *   current_humidity: Property,
+	 *   target_humidity: Property,
+	 *   fault: Property,
+	 *   fan_level: Property,
+	 *   mode: Property,
+	 *   status: Property
+	 * }) & { [x: string]: Property }}
 	 * @property {Property} on Включение/выключение увлажнителя.
 	 * @property {Property} current_temperature Текущая температура.
 	 * @property {Property} current_humidity Текущая влажность.

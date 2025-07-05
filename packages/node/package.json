@@ -18,8 +18,8 @@
 		"./src/*.js"
 	],
 	"dependencies": {
-		"xmihome-devices": "workspace:*",
-		"mijia-io": "github:salamwaddah/mijia-io"
+		"mijia-io": "github:salamwaddah/mijia-io",
+		"xmihome-devices": "workspace:*"
 	},
 	"optionalDependencies": {
 		"dbus-next": "github:dcodeIO/node-dbus-next"

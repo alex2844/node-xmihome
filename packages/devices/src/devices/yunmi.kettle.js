@@ -10,24 +10,15 @@ const isBrowser = typeof window !== 'undefined';
  * @extends Device
  */
 export default class extends Device {
-	/**
-	 * Название устройства.
-	 * @type {string}
-	 */
+	/** @type {string} */
 	static name = 'Mi Smart Kettle';
 
-	/**
-	 * Список альтернативных названий устройства (алиасов).
-	 * @type {string[]}
-	 */
+	/** @type {string[]} */
 	static alias = [
 		'MiKettle'
 	];
 
-	/**
-	 * Список поддерживаемых моделей устройств.
-	 * @type {string[]}
-	 */
+	/** @type {string[]} */
 	static models = [
 		'yunmi.kettle.v2'
 	];
@@ -51,8 +42,44 @@ export default class extends Device {
 	static PROP_MODE = { 255: 'none', 1: 'boil', 2: 'keep_warm' };
 
 	/**
-	 * Описание свойств устройства.
-	 * @type {Object.<string, Property>}
+	 * @typedef {Omit<Property, 'read'|'write'> & {
+	 *   read: (buf: Buffer) => {type: string, temperature: number},
+	 *   write: (data?: {temperature?: number, type?: string}) => Buffer
+	 * }} KeepWarmSettingsProperty
+	 */
+	/**
+	 * @typedef {Omit<Property, 'read'|'write'> & {
+	 *   read: (buf: Buffer) => number,
+	 *   write: (hours: number) => Buffer
+	 * }} KeepWarmDurationProperty
+	 */
+	/**
+	 * @typedef {Omit<Property, 'read'|'write'> & {
+	 *   read: (buf: Buffer) => boolean,
+	 *   write: (enabled: boolean) => Buffer
+	 * }} KeepWarmRefillProperty
+	 */
+	/**
+	 * @typedef {Omit<Property, 'notify'> & {
+	 *   notify: (buf: Buffer) => {
+	 *     action: string,
+	 *     mode: string,
+	 *     keep_warm_set_temperature: number,
+	 *     current_temperature: number,
+	 *     keep_warm_type: string,
+	 *     keep_warm_time: number
+	 *   }
+	 * }} KettleStatusProperty
+	 */
+	/**
+	 * @type {({
+	 *   authInit: Property,
+	 *   auth: Property,
+	 *   keep_warm_settings: KeepWarmSettingsProperty,
+	 *   keep_warm_duration: KeepWarmDurationProperty,
+	 *   keep_warm_refill: KeepWarmRefillProperty,
+	 *   status: KettleStatusProperty
+	 * }) & { [x: string]: Property }}
 	 * @property {Property} authInit Характеристика инициализации аутентификации.
 	 * @property {Property} auth Характеристика аутентификации.
 	 * @property {Property} keep_warm_settings Настройки режима поддержания тепла. Позволяет установить целевую температуру и тип подогрева.
@@ -130,10 +157,7 @@ export default class extends Device {
 		}
 	};
 
-	/**
-	 * Карта для преобразования полных 128-битных UUID в короткие 16-битные.
-	 * @type {UuidMapping}
-	 */
+	/** @type {UuidMapping} */
 	static uuidMap = {
 		services: {
 			'0000fe95-0000-1000-8000-00805f9b34fb': '0023',
@@ -149,11 +173,7 @@ export default class extends Device {
 		}
 	};
 
-	/**
-	 * Конструктор класса.
-	 * @param {Config} config Конфигурация устройства.
-	 * @param {XiaomiMiHome} client Экземпляр класса XiaomiMiHome.
-	 */
+	/** @param {Config} config @param {XiaomiMiHome} client */
 	constructor(config, client) {
 		super(config, client);
 		this.productId = 275;
@@ -166,18 +186,12 @@ export default class extends Device {
 		}
 	};
 
-	/**
-	 * Устанавливает соединение с устройством.
-	 * @override
-	 */
+	/** @override */
 	async connect() {
 		await super.connect('bluetooth');
 	};
 
-	/**
-	 * Выполняет специфичную для устройства логику аутентификации.
-	 * @override
-	 */
+	/** @override */
 	async auth() {
 		if (isBrowser) {
 			const storageKey = `mac_${this.class.models[0]}`;
@@ -196,7 +210,7 @@ export default class extends Device {
 			this.config.mac = mac;
 		}
 		this.client.log('info', `Kettle ${this.config.mac}: Starting Bluetooth authentication`);
-		const mac = this.config.mac.split(':').map(s => parseInt(s, 16)).reverse();
+		const mac = this.config.mac.split(':').map((/** @type {string} */ s) => parseInt(s, 16)).reverse();
 		const ma = Buffer.from([
 			mac[0], mac[2], mac[5], this.productId & 0xff, this.productId & 0xff, mac[4], mac[5], mac[1]
 		]);

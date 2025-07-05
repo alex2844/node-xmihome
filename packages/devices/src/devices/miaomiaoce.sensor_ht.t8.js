@@ -6,34 +6,44 @@ import Device from 'xmihome/device.js';
  * @extends Device
  */
 export default class extends Device {
-	/**
-	 * Название устройства.
-	 * @type {string}
-	 */
+	/** @type {string} */
 	static name = 'Temperature Humidity Sensor';
 
-	/**
-	 * Список альтернативных названий устройства (алиасов).
-	 * @type {string[]}
-	 */
+	/** @type {string[]} */
 	static alias = [
 		'LYWSD02MMC'
 	];
 
-	/**
-	 * Список поддерживаемых моделей устройств.
-	 * @type {string[]}
-	 */
+	/** @type {string[]} */
 	static models = [
 		'miaomiaoce.sensor_ht.t8'
 	];
 
 	/**
-	 * Описание свойств устройства и их параметров для взаимодействия через Bluetooth.
-	 * @type {Object.<string, Property>}
-	 * @property {Property} battery Уровень заряда батареи.
-	 * @property {Property} time Время и временная зона устройства.
-	 * @property {Property} status Статус (температура и влажность).
+	 * @typedef {Omit<Property, 'read'> & {
+	 *   read: (buf: Buffer) => number
+	 * }} BatteryProperty
+	 */
+	/**
+	 * @typedef {Omit<Property, 'read'|'write'> & {
+	 *   read: (buf: Buffer) => {timestamp: number, offset: number},
+	 *   write: (data?: {timestamp?: number, offset?: number}) => Buffer
+	 * }} TimeProperty
+	 */
+	/**
+	 * @typedef {Omit<Property, 'read'> & {
+	 *   read: (buf: Buffer) => {temp: number, hum: number}
+	 * }} StatusProperty
+	 */
+	/**
+	 * @type {({
+	 *   battery: BatteryProperty,
+	 *   time: TimeProperty,
+	 *   status: StatusProperty
+	 * }) & { [x: string]: Property }}
+	 * @property {BatteryProperty} battery Уровень заряда батареи.
+	 * @property {TimeProperty} time Время и временная зона устройства.
+	 * @property {StatusProperty} status Статус (температура и влажность).
 	 */
 	static properties = {
 		'battery': {
@@ -70,10 +80,7 @@ export default class extends Device {
 		}
 	};
 
-	/**
-	 * Карта для преобразования полных 128-битных UUID в короткие 16-битные.
-	 * @type {UuidMapping}
-	 */
+	/** @type {UuidMapping} */
 	static uuidMap = {
 		services: {
 			'ebe0ccb0-7a0a-4b0c-8a1a-6ff2997da3a6': '001b'
