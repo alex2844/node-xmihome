@@ -1,11 +1,11 @@
 # node-xmihome
 
-[![NPM Version](https://img.shields.io/npm/v/node-xmihome.svg)](https://www.npmjs.com/package/node-xmihome)
+[![NPM Version](https://img.shields.io/npm/v/xmihome.svg)](https://www.npmjs.com/package/xmihome)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Node.js библиотека для управления устройствами Xiaomi Mi Home.**
 
-`node-xmihome` предоставляет простой и удобный интерфейс для взаимодействия с
+`xmihome` предоставляет простой и удобный интерфейс для взаимодействия с
 различными устройствами умного дома Xiaomi Mi Home через Node.js. Библиотека
 поддерживает несколько типов подключения, включая MiIO, Bluetooth и облако
 Xiaomi, позволяя вам интегрировать устройства Xiaomi в ваши Node.js приложения
@@ -46,13 +46,13 @@ Xiaomi, позволяя вам интегрировать устройства 
 
 ## Установка
 
-Для установки библиотеки `node-xmihome` используйте npm:
+Для установки библиотеки `xmihome` используйте npm:
 
 ```bash
-npm install node-xmihome
+npm install xmihome
 
-# bun install node-xmihome
-# bun ./node_modules/node-xmihome/install.js
+# bun install xmihome
+# bun ./node_modules/xmihome/bin/setup-bluetooth.js
 ```
 
 **Важно для пользователей Linux, использующих Bluetooth:**
@@ -62,13 +62,13 @@ npm install node-xmihome
 
 Если вы не являетесь пользователем root,  во время установки будет создан
 конфигурационный файл Bluetooth (`xmihome_bluetooth.conf`) в директории
-`node_modules/node-xmihome/`.
+`node_modules/xmihome/`.
 
 Для корректной работы Bluetooth LE функций, вам может потребоваться скопировать
 этот файл в системную директорию D-Bus и перезапустить службу Bluetooth:
 
 ```bash
-sudo cp node_modules/node-xmihome/xmihome_bluetooth.conf /etc/dbus-1/system.d/
+sudo cp node_modules/xmihome/xmihome_bluetooth.conf /etc/dbus-1/system.d/
 sudo systemctl restart bluetooth
 ```
 
@@ -81,7 +81,7 @@ sudo systemctl restart bluetooth
 управления им:
 
 ```javascript
-import { XiaomiMiHome } from 'node-xmihome';
+import { XiaomiMiHome } from 'xmihome';
 
 async function main() {
   const miHome = new XiaomiMiHome({
@@ -202,7 +202,7 @@ main();
 
 Если ваше устройство Xiaomi Mi Home не входит в список устройств с
 оптимизированной поддержкой, вы все равно можете попытаться управлять им,
-используя `node-xmihome`.
+используя `xmihome`.
 
 Для **улучшения поддержки** и добавления понятных имен свойств для вашего
 устройства, вы можете:
@@ -216,12 +216,12 @@ main();
 3. **Определить статические свойства:** Заполните `static name`, `static models`,
 и `static properties` в соответствии со спецификацией вашего устройства.
 4. **Отправить Pull Request:**  Если вы хотите поделиться своей работой с
-сообществом, отправьте Pull Request на GitHub репозиторий `node-xmihome` с вашим
+сообществом, отправьте Pull Request на GitHub репозиторий `xmihome` с вашим
 файлом определения устройства.
 
 ## Логирование
 
-Библиотека `node-xmihome` использует два механизма для вывода логов:
+Библиотека `xmihome` использует два механизма для вывода логов:
 
 1. **Переменная окружения `NODE_DEBUG`:**
     * Для вывода детальной отладочной информации установите переменную
