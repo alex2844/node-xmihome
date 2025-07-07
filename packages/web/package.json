@@ -9,7 +9,7 @@
 		"dev": "bun ./build.js"
 	},
 	"dependencies": {
-		"xmihome-devices": "workspace:*"
+		"xmihome-devices": "file:../devices"
 	},
 	"devDependencies": {
 		"@types/web-bluetooth": "^0.0.21"

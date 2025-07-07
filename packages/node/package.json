@@ -19,7 +19,7 @@
 	],
 	"dependencies": {
 		"mijia-io": "github:salamwaddah/mijia-io",
-		"xmihome-devices": "workspace:*"
+		"xmihome-devices": "file:../devices"
 	},
 	"optionalDependencies": {
 		"dbus-next": "github:dcodeIO/node-dbus-next"

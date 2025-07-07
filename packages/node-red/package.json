@@ -22,7 +22,7 @@
 		}
 	},
 	"dependencies": {
-		"xmihome": "workspace:*"
+		"xmihome": "file:../node"
 	},
 	"devDependencies": {
 		"@types/bun": "^1.2.17",
