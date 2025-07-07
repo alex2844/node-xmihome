@@ -121,7 +121,7 @@ async function copyAllDocs(nodeNames) {
 		const lang = dirent.name;
 		const localeDistDir = path.join(DIST_DIR, 'nodes', 'locales', lang);
 		for (const nodeName of nodeNames) {
-			const docSrc = path.join(DOCS_DIR, lang, `${nodeName}.md`);
+			const docSrc = path.join(DOCS_DIR, lang, 'nodes', `${nodeName}.md`);
 			if (await Bun.file(docSrc).exists()) {
 				await mkdir(localeDistDir, { recursive: true });
 				const dest = path.join(localeDistDir, `${nodeName}.html`);

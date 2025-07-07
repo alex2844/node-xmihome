@@ -62,4 +62,3 @@
     - `msg.payload.event` может быть:
     `connected`, `disconnected`, `reconnecting`, `reconnect_failed`, `error`.
     - `msg.topic` будет содержать `connection/...` или `error/...`.
-
