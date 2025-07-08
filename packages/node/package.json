@@ -15,6 +15,7 @@
 		"postinstall": "xmihome-setup-bluetooth"
 	},
 	"files": [
+		"./bin/*.js",
 		"./src/*.js"
 	],
 	"dependencies": {
