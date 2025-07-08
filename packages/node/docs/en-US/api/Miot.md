@@ -49,3 +49,71 @@ Executes a signed request to the Xiaomi Cloud API.
 **Returns:**
 
 - `Promise<object>`: A promise that resolves with the JSON response from the server.
+
+### `parseJson(str)`
+
+Parses a JSON string, removing the `&&&START&&&` prefix if present.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `str` | `string` | The JSON string. |
+
+**Returns:**
+
+- `object`: The parsed JSON object.
+
+### `getApiUrl(country)`
+
+Returns the API URL for the specified country.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `country` | `string` | The country code (e.g., `ru`, `cn`). |
+
+**Returns:**
+
+- `string`: The API URL.
+
+### `generateSignature(path, _signedNonce, nonce, params)`
+
+Generates a request signature for the Xiaomi Cloud API.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `path` | `string` | The API request path. |
+| `_signedNonce` | `string` | The signed nonce. |
+| `nonce` | `string` | The nonce. |
+| `params` | `object` | The request parameters. |
+
+**Returns:**
+
+- `string`: The request signature in base64.
+
+### `generateNonce()`
+
+Generates a nonce for Xiaomi Cloud API requests.
+
+**Returns:**
+
+- `string`: The nonce in base64.
+
+### `signedNonce(ssecret, nonce)`
+
+Generates a signed nonce.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `ssecret` | `string` | The `ssecurity` token. |
+| `nonce` | `string` | The nonce. |
+
+**Returns:**
+
+- `string`: The signed nonce in base64.

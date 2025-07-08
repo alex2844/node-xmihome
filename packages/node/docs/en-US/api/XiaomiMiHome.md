@@ -49,7 +49,8 @@ Discovers available devices based on the specified strategy.
 | `options` | `object` | (Optional) Discovery options. |
 | `options.timeout` | `number` | (Optional) Timeout for local (MiIO/Bluetooth) discovery in milliseconds. Default: `10000`. |
 | `options.connectionType` | `string` | (Optional) The discovery method to use (`'cloud'`, `'miio'`, `'bluetooth'`). Overrides the default from the constructor. |
-| `options.onDeviceFound` | `function` | (Optional) A callback function to filter and control the discovery process. |
+| `options.onDeviceFound` | `function` | (Optional) A callback function to filter and control the discovery process. It receives `(device, devices, type)` and can return `true` to include, `false` to skip, or an object `{ include?: boolean, stop?: boolean }` to control the flow. |
+
 
 **Returns:**
 
@@ -98,3 +99,18 @@ Fetches the environmental data for a specified home from the Xiaomi Cloud.
 **Returns:**
 
 - `Promise<object>`: A promise that resolves to an object with environmental data.
+
+### `log(level, ...args)`
+
+Writes a log message. It respects the `logLevel` set in the constructor and the `NODE_DEBUG=xmihome` environment variable.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `level` | `string` | The message level (`'error'`, `'warn'`, `'info'`, `'debug'`). |
+| `...args` | `any` | Arguments to log, similar to `console.log`. |
+
+**Returns:**
+
+- `void`

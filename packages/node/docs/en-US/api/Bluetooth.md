@@ -69,6 +69,20 @@ Initializes the default Bluetooth adapter. This method is usually called interna
 
 - `Promise<object>`: A promise that resolves with the adapter interface object.
 
+### `extractProperties(properties)`
+
+Extracts properties from a D-Bus Variant object. This is a utility method used internally to process data received from D-Bus.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `properties` | `object` | The D-Bus properties object containing Variant values. |
+
+**Returns:**
+
+- `object`: A plain JavaScript object with extracted properties.
+
 ### `destroy()`
 
 Releases resources, stops scanning, and disconnects all connected devices.

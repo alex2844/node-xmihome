@@ -77,7 +77,9 @@ async function main() {
   try {
     const devices = await miHome.getDevices({
       timeout: 30000,
-      findCallback: (device, devices) => {
+      onDeviceFound: (device, devices) => {
+        // Верните true, чтобы включить устройство в результат,
+        // false, чтобы проигнорировать, или {stop: true}, чтобы остановить поиск.
         return true;
       }
     });
@@ -191,4 +193,3 @@ main();
 
 1. **Переменная окружения `NODE_DEBUG=xmihome`** для детального вывода через `util.debuglog`.
 2. **Опция конструктора `logLevel`** для вывода в `console`.
-
