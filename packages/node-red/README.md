@@ -28,7 +28,7 @@ npm install node-red-contrib-xmihome
 
 **Note for Linux users with Bluetooth:**
 The package will attempt to automatically configure D-Bus permissions.
-If you encounter issues, please refer to the [instructions in the core library](https://github.com/alex2844/node-xmihome/tree/main/packages/node#important-for-linux-users-utilizing-bluetooth).
+If you encounter issues, please refer to the [instructions in the core library](https://github.com/alex2844/node-xmihome/tree/main/packages/node#installation).
 
 ## Nodes
 

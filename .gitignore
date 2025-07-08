@@ -1,5 +1,6 @@
 node_modules
 xmihome_bluetooth.conf
+docs_apply.sh
 dist
 .env
 .dev

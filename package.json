@@ -6,7 +6,8 @@
 	"scripts": {
 		"test": "tsc -p ./jsconfig.json",
 		"build": "npm run build --workspaces --if-present",
-		"clean": "rm -rf ./packages/*/dist"
+		"clean": "rm -rf ./packages/*/dist",
+		"docs": "./scripts/docs_gen.sh"
 	},
 	"files": [],
 	"workspaces": [

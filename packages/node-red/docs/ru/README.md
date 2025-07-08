@@ -31,7 +31,7 @@ npm install node-red-contrib-xmihome
 
 **Примечание для пользователей Linux, использующих Bluetooth:**
 Пакет попытается автоматически настроить разрешения D-Bus.
-Если у вас возникнут проблемы, обратитесь к [инструкциям в основной библиотеке](https://github.com/alex2844/node-xmihome/tree/main/packages/node).
+Если у вас возникнут проблемы, обратитесь к [инструкциям в основной библиотеке](https://github.com/alex2844/node-xmihome/tree/main/packages/node#установка).
 
 ## Узлы
 
