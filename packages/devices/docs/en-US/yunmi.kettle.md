@@ -1,6 +1,6 @@
 # Mi Smart Kettle (yunmi.kettle.v2)
 
-Class for managing the Mi Smart Kettle.
+Class for managing the Mi Smart Kettle (yunmi.kettle.v2).
 
 ## Models
 
@@ -14,12 +14,12 @@ Class for managing the Mi Smart Kettle.
 
 | Name | Description | Access | Service / Characteristic (Short ID) |
 |---|---|---|---|
-| `authInit` | Authentication initialization characteristic. Used internally for secure connection. | - | `0023` / `002b` |
-| `auth` | Authentication characteristic. Used internally for secure connection. | - | `0023` / `0024` |
-| `keep_warm_settings` | Keep-warm mode settings. Allows setting the target temperature (40-90°C) and the heating type (`boil_and_cool_down` or `heat_to_temperature`). | `read`, `write` | `0038` / `0039` |
+| `authInit` | Authentication initialization characteristic. | - | `0023` / `002b` |
+| `auth` | Authentication characteristic. | - | `0023` / `0024` |
+| `keep_warm_settings` | Keep-warm mode settings. Allows setting the target temperature and heating type. | `read`, `write` | `0038` / `0039` |
 | `keep_warm_duration` | Duration of the keep-warm mode in hours. Accepts a value from 1 to 12. | `read`, `write` | `0038` / `0040` |
-| `keep_warm_refill` | "Do not re-boil" mode. If `true`, the kettle will not re-boil the water if its temperature is above the target. | `read`, `write` | `0038` / `0043` |
-| `status` | Kettle status. Returns an object with fields: `action`, `mode`, `keep_warm_set_temperature`, `current_temperature`, `keep_warm_type`, `keep_warm_time`. | `notify` | `0038` / `003c` |
+| `keep_warm_refill` | "Do not re-boil" mode. | `read`, `write` | `0038` / `0043` |
+| `status` | Kettle status. | `notify` | `0038` / `003c` |
 
 ## UUID Map
 
