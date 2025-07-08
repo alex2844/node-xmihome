@@ -14,11 +14,22 @@ Instances of this class are typically created via the `XiaomiMiHome.getDevice()`
 | `isReconnecting` | `boolean` | `true` if the device is in the process of automatic reconnection. |
 | `properties` | `object` | An object containing the definitions of all device properties. |
 
+## Events
+
+Instances of the `Device` class emit the following events:
+
+| Event | Payload | Description |
+|---|---|---|
+| `connected` | `string` (connectionType) | Emitted when a connection to the device is successfully established. |
+| `disconnect` | - | Emitted when the device is disconnected, either by calling `disconnect()` or externally. |
+| `reconnecting` | `{ reason: string }` | Emitted when an automatic reconnection process starts after an unexpected disconnect. |
+| `reconnect_failed` | `{ attempts: number, error?: string }` | Emitted when the automatic reconnection process fails after all attempts. |
+
 ## Methods
 
 ### `connect(connectionType)`
 
-Establishes a connection to the device. The connection type is determined automatically if not specified.
+Establishes a connection to the device. The connection type is determined automatically if not specified. The method prioritizes the passed `connectionType` argument, then falls back to the client's default setting, and finally auto-detects based on available device data.
 
 **Parameters:**
 
