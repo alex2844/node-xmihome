@@ -19,9 +19,10 @@
 		"baseUrl": "."
 	},
 	"include": [
-		"packages/*/src/**/*.js",
-		"packages/*/bin/**/*.js",
-		"packages/*/build.js"
+		"./scripts/",
+		"./packages/*/src/**/*.js",
+		"./packages/*/bin/**/*.js",
+		"./packages/*/build.js"
 	],
 	"exclude": ["node_modules"]
 }
