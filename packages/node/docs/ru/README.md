@@ -179,7 +179,7 @@ main();
 протоколе или Bluetooth GATT сервисах и характеристиках, которые использует
 ваше устройство. [Miot-spec.org](https://miot-spec.org/) может быть полезным ресурсом.
 2. **Создать файл определения устройства:** Создайте новый файл `.js` в директории
-[`packages/devices/src/devices/`](../../../devices/),
+[`packages/devices/src/devices/`](../../../devices/src/devices/),
 основываясь на примере существующих файлов (например, `deerma.humidifier.jsq2w.js`).
 3. **Определить статические свойства:** Заполните `static name`, `static models`,
 и `static properties` в соответствии со спецификацией вашего устройства.

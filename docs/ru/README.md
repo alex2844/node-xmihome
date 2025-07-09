@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[RU] | [[EN]](../README.md)
+[RU] | [[EN]](../../README.md)
 
 Это монорепозиторий для `node-xmihome` — набора инструментов для управления
 устройствами Xiaomi Mi Home через Node.js. Проект предоставляет как основную

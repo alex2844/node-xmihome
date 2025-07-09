@@ -2,6 +2,16 @@
 
 A class for low-level interaction with Bluetooth LE devices via D-Bus. It is typically used internally by the `XiaomiMiHome` client.
 
+## Static Methods
+
+### `createBluetooth()`
+
+Creates and initializes a new instance of the Bluetooth class. This is the recommended way to create a standalone instance.
+
+**Returns:**
+
+- `Promise<Bluetooth>`: A promise that resolves with the initialized Bluetooth instance.
+
 ## Methods
 
 ### `startDiscovery(filters)`
