@@ -73,7 +73,9 @@ async function main() {
   try {
     const devices = await miHome.getDevices({
       timeout: 30000,
-      onDeviceFound: (device, devices) => {
+      onDeviceFound: (device, devices, type) => {
+        // Return true to include the device, false to ignore, or
+        // an object { include?: boolean, stop?: boolean } to control the discovery.
         return true;
       }
     });
