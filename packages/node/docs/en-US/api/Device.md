@@ -73,7 +73,7 @@ Gets the value of a single property.
 
 | Name | Type | Description |
 |---|---|---|
-| `prop` | `string` | The name of the property to get. |
+| `prop` | `string \| object` | The name of the property or the property definition object. |
 
 **Returns:**
 
@@ -87,7 +87,7 @@ Gets the values of multiple properties. If `properties` is not provided, it requ
 
 | Name | Type | Description |
 |---|---|---|
-| `properties` | `string[]` | (Optional) An array of property names to get. |
+| `properties` | `(string \| object)[]` | (Optional) An array of property names or property definition objects to get. |
 
 **Returns:**
 
@@ -101,7 +101,7 @@ Sets the value of a single property.
 
 | Name | Type | Description |
 |---|---|---|
-| `prop` | `string` | The name of the property to set. |
+| `prop` | `string \| object` | The name of the property or the property definition object to set. |
 | `value` | `any` | The new value for the property. |
 
 **Returns:**
@@ -116,7 +116,7 @@ Subscribes to notifications for a property's value changes.
 
 | Name | Type | Description |
 |---|---|---|
-| `prop` | `string` | The name of the property to subscribe to. |
+| `prop` | `string \| object` | The name of the property or property definition object to subscribe to. |
 | `callback` | `function` | The function to be called with the new value on each change. |
 
 **Returns:**
@@ -131,7 +131,7 @@ Unsubscribes from notifications for a property.
 
 | Name | Type | Description |
 |---|---|---|
-| `prop` | `string` | The name of the property to unsubscribe from. |
+| `prop` | `string \| object` | The name of the property or property definition object to unsubscribe from. |
 
 **Returns:**
 
