@@ -77,9 +77,9 @@ async function main() {
   try {
     const devices = await miHome.getDevices({
       timeout: 30000,
-      onDeviceFound: (device, devices) => {
-        // Верните true, чтобы включить устройство в результат,
-        // false, чтобы проигнорировать, или {stop: true}, чтобы остановить поиск.
+      onDeviceFound: (device, devices, type) => {
+        // Верните true, чтобы включить устройство, false, чтобы проигнорировать, или
+        // объект { include?: boolean, stop?: boolean } для управления поиском.
         return true;
       }
     });

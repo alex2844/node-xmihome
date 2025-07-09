@@ -19,7 +19,35 @@ Class for managing the Mi Smart Kettle (yunmi.kettle.v2).
 | `keep_warm_settings` | Keep-warm mode settings. Allows setting the target temperature and heating type. | `read`, `write` | `0038` / `0039` |
 | `keep_warm_duration` | Duration of the keep-warm mode in hours. Accepts a value from 1 to 12. | `read`, `write` | `0038` / `0040` |
 | `keep_warm_refill` | "Do not re-boil" mode. | `read`, `write` | `0038` / `0043` |
-| `status` | Kettle status. | `notify` | `0038` / `003c` |
+| `status` | Kettle status. Provides real-time data on action, mode, temperatures, etc. | `notify` | `0038` / `003c` |
+
+## Constants
+
+The device uses the following constant values, which can be seen in the output of the `status` property.
+
+### Action (`action`)
+
+| Value | Description |
+|---|---|
+| `idle` | The kettle is idle. |
+| `heating` | The kettle is heating water. |
+| `cooling` | The kettle is cooling down after boiling. |
+| `keeping_warm` | The kettle is in keep-warm mode. |
+
+### Keep Warm Type (`keep_warm_type`)
+
+| Value | Description |
+|---|---|
+| `boil_and_cool_down` | Boil the water first, then let it cool to the target temperature. |
+| `heat_to_temperature` | Heat the water directly to the target temperature without boiling. |
+
+### Mode (`mode`)
+
+| Value | Description |
+|---|---|
+| `none` | No specific mode is active. |
+| `boil` | The kettle is set to boil water. |
+| `keep_warm` | The kettle is set to keep water warm. |
 
 ## UUID Map
 
