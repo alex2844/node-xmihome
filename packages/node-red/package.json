@@ -6,13 +6,13 @@
 	"scripts": {
 		"test": "tsc -p ./jsconfig.json",
 		"build": "bun ./build.js",
-		"start": "node-red --settings settings.json",
+		"start": "node-red --settings settings.cjs",
 		"dev": "nodemon --exec 'bun run build && bun run start' --watch src --watch locales --watch docs -e js,json,html,md",
 		"prepublishOnly": "npm run build"
 	},
 	"files": [
 		"./dist/",
-		"./examples"
+		"./examples/"
 	],
 	"node-red": {
 		"nodes": {

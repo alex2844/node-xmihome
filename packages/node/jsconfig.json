@@ -4,8 +4,8 @@
 	},
 	"extends": "../../jsconfig.json",
 	"include": [
-		"src/**/*.ts",
-		"src/**/*.js",
-		"bin/**/*.js"
+		"./src/**/*.ts",
+		"./src/**/*.js",
+		"./bin/**/*.js"
 	]
 }

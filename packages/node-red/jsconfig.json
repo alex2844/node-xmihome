@@ -4,7 +4,8 @@
 	},
 	"extends": "../../jsconfig.json",
 	"include": [
-		"src/**/*.js",
-		"build.js"
+		"./src/**/*.js",
+		"./settings.cjs",
+		"./build.js"
 	]
 }
