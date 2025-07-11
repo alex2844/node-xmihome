@@ -52,6 +52,8 @@ export default class Device extends EventEmitter {
 	 * @returns {Promise<Device>}
 	 */
 	static async create(device, client) {
+		if (!navigator.bluetooth)
+			throw new Error('Web Bluetooth is not supported in this browser.');
 		const model = this.findModel(device);
 		if (!model)
 			throw new Error(`Device model "${device.model}" not found or not registered.`);
@@ -90,11 +92,11 @@ export default class Device extends EventEmitter {
 			const bluetooth = new Bluetooth(this.client);
 			this.client.log('debug', `Connecting via Bluetooth to ${this.config.model}`);
 			this.device = await bluetooth.getDevice(this);
-			this.proxy = await this.device.connect();
+			this.device.on('disconnect', () => this.emit('disconnect'));
+			await this.device.connect();
 			await this.auth();
 		} catch (err) {
 			this.device = null;
-			this.proxy = null;
 			throw err;
 		}
 	};
