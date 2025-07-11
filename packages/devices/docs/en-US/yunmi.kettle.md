@@ -25,7 +25,7 @@ To connect and authenticate with the kettle, its MAC address must be provided in
 |---|---|---|---|
 | `authInit` | Authentication initialization characteristic. | - | `0023` / `002b` |
 | `auth` | Authentication characteristic. | - | `0023` / `0024` |
-| `keep_warm_settings` | Keep-warm mode settings. Allows setting the target temperature and heating type. | `read`, `write` | `0038` / `0039` |
+| `keep_warm_settings` | Keep-warm mode settings. Allows setting the target temperature (40-90°C) and heating type. | `read`, `write` | `0038` / `0039` |
 | `keep_warm_duration` | Duration of the keep-warm mode in hours. Accepts a value from 1 to 12. | `read`, `write` | `0038` / `0040` |
 | `keep_warm_refill` | "Do not re-boil" mode. | `read`, `write` | `0038` / `0043` |
 | `status` | Kettle status. Provides real-time data on action, mode, temperatures, etc. | `notify` | `0038` / `003c` |
