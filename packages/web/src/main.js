@@ -3,20 +3,6 @@ import { devices } from 'xmihome-devices/bluetooth.js';
 
 Device.registerModels(devices);
 
-/**
- * Записывает лог-сообщение.
- * Учитывает logLevel, установленный в конструкторе, и переменную окружения NODE_DEBUG=xmihome.
- * @param {('error'|'warn'|'info'|'debug')} level Уровень сообщения.
- * @param {...any} args Аргументы для логирования (как в console.log).
- */
-function log(level, ...args) {
-	const prefix = `[${level.toUpperCase()}]`;
-	const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg).join(' ');
-	logOutput.textContent += `${prefix} ${message}\n`;
-	logOutput.scrollTop = logOutput.scrollHeight;
-	console[level](...args);
-};
-
 /** @type {Device|null} */
 let activeDevice = null;
 
@@ -24,20 +10,41 @@ let activeDevice = null;
 const deviceSelector = /** @type {HTMLSelectElement} */ (document.getElementById('device-selector'));
 const modelSelector = /** @type {HTMLSelectElement} */ (document.getElementById('model-selector'));
 const connectButton = /** @type {HTMLButtonElement} */ (document.getElementById('connect-button'));
-const deviceSchema = /** @type {HTMLDivElement} */ (document.getElementById('device-schema'));
-const devicePanel = /** @type {HTMLDivElement} */ (document.getElementById('device-panel'));
-const deviceNameEl = /** @type {HTMLHeadingElement} */ (document.getElementById('device-name'));
+const deviceSchema = /** @type {HTMLFieldSetElement} */ (document.getElementById('device-schema'));
+const devicePanel = /** @type {HTMLFieldSetElement} */ (document.getElementById('device-panel'));
+const deviceNameEl = /** @type {HTMLLegendElement} */ (document.getElementById('device-name'));
 const deviceActionsEl = /** @type {HTMLDivElement} */ (document.getElementById('device-actions'));
 const disconnectButton = /** @type {HTMLButtonElement} */ (document.getElementById('disconnect-button'));
+const logContainer = /** @type {HTMLDivElement} */ (document.getElementById('log-container'));
 const logOutput = /** @type {HTMLPreElement} */ (document.getElementById('log-output'));
 
+/**
+ * Записывает лог-сообщение.
+ * Учитывает logLevel, установленный в конструкторе, и переменную окружения NODE_DEBUG=xmihome.
+ * @param {('error'|'warn'|'info'|'debug')} level Уровень сообщения.
+ * @param {...any} args Аргументы для логирования (как в console.log).
+ */
+function log(level, ...args) {
+	if (logContainer.hidden)
+		logContainer.hidden = false;
+	const prefix = `[${level.toUpperCase()}]`;
+	const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg).join(' ');
+	logOutput.textContent += `${prefix} ${message}\n`;
+	logOutput.scrollTop = logOutput.scrollHeight;
+	console[level](...args);
+};
+
 function hideDevicePanel() {
+	connectButton.hidden = false;
+	disconnectButton.hidden = true;
 	devicePanel.hidden = true;
 	deviceActionsEl.innerHTML = '';
 };
 
 /** @param {Device} device */
 function showDevicePanel(device) {
+	connectButton.hidden = true;
+	disconnectButton.hidden = false;
 	deviceSelector.disabled = true;
 	modelSelector.disabled = true;
 	deviceNameEl.textContent = device.constructor.name;
@@ -60,6 +67,9 @@ function showDevicePanel(device) {
 		valueInput.placeholder = 'value';
 		actionItem.appendChild(valueInput);
 
+		const buttonContainer = document.createElement('div');
+		buttonContainer.className = 'action-buttons';
+
 		if (canRead) {
 			const button = document.createElement('button');
 			button.textContent = 'Read';
@@ -74,7 +84,7 @@ function showDevicePanel(device) {
 					log('error', `Read ${key}:`, err.message);
 				}
 			};
-			actionItem.appendChild(button);
+			buttonContainer.appendChild(button);
 		}
 
 		if (canWrite) {
@@ -91,7 +101,7 @@ function showDevicePanel(device) {
 					log('error', `Write ${key}:`, err.message);
 				}
 			};
-			actionItem.appendChild(button);
+			buttonContainer.appendChild(button);
 		}
 
 		if (canNotify) {
@@ -123,8 +133,9 @@ function showDevicePanel(device) {
 					}
 				}
 			};
-			actionItem.appendChild(button);
+			buttonContainer.appendChild(button);
 		}
+		actionItem.appendChild(buttonContainer);
 		deviceActionsEl.appendChild(actionItem);
 	}
 	devicePanel.hidden = false;
@@ -145,13 +156,14 @@ async function connectToDevice() {
 					if (!device[schema.key])
 						device[schema.key] = {};
 					device[schema.key][field.key] = input.value;
-				}else
+				} else
 					device[field.key] = input.value;
 				localStorage.setItem(inputId, input.value);
 			}
 		}
 		deviceSchema.hidden = true;
 	}
+	logContainer.hidden = true;
 	logOutput.textContent = '';
 	log('info', 'Starting connection...');
 	connectButton.disabled = true;

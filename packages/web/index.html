@@ -8,19 +8,24 @@
 	</head>
 	<body>
 		<h1>node-xmihome</h1>
-		<div class="control-group">
-			<select id="device-selector"></select>
-			<select id="model-selector" hidden></select>
-			<button id="connect-button" disabled>Connect</button>
-		</div>
+		<fieldset class="control-group">
+			<legend>Device Selection</legend>
+			<div class="fieldset-content">
+				<select id="device-selector"></select>
+				<select id="model-selector" hidden></select>
+				<button id="connect-button" disabled>Connect</button>
+				<button id="disconnect-button" hidden>Disconnect</button>
+			</div>
+		</fieldset>
 		<fieldset class="control-group" id="device-schema" hidden></fieldset>
-		<div class="control-group" id="device-panel" hidden>
-			<h2 id="device-name"></h2>
+		<fieldset class="control-group" id="device-panel" hidden>
+			<legend id="device-name"></legend>
 			<div id="device-actions"></div>
-			<button id="disconnect-button">Disconnect</button>
+		</fieldset>
+		<div class="control-group log-container" id="log-container" hidden>
+			<h3>Logs</h3>
+			<pre id="log-output"></pre>
 		</div>
-		<h3>Logs:</h3>
-		<pre id="log-output"></pre>
 		<script src="./dist/bundle.js"></script>
 	</body>
 </html>

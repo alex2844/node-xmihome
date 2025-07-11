@@ -1,74 +1,161 @@
+:root {
+	--primary-color: #007bff;
+	--danger-color: #dc3545;
+	--background-color: #f4f7f9;
+	--text-color: #333;
+	--border-color: #e0e0e0;
+	--white-color: #fff;
+	--dark-bg: #2d333b;
+	--dark-text: #cdd9e5;
+}
+
 body {
-	font-family: sans-serif;
-	line-height: 1.5;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	line-height: 1.6;
 	padding: 1em;
+	background-color: var(--background-color);
+	color: var(--text-color);
+}
+
+select, button, input {
+	font-size: 1em;
+	padding: 0.7em 1em;
+	border-radius: 8px;
+	border: 1px solid var(--border-color);
+	transition: all 0.2s ease-in-out;
+	box-sizing: border-box;
+}
+
+button {
+	cursor: pointer;
+	background-color: var(--primary-color);
+	color: var(--white-color);
+	border-color: var(--primary-color);
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+button:hover:not(:disabled) {
+	filter: brightness(1.1);
+	transform: translateY(-1px);
+}
+
+button:disabled {
+	background-color: #a0a0a0;
+	border-color: #a0a0a0;
+	cursor: not-allowed;
+}
+
+h1 {
+	text-align: center;
+	font-size: 2.5em;
+	font-weight: 300;
+	color: #1a2533;
+	margin-bottom: 1.5em;
+	letter-spacing: 1px;
+}
+
+.disconnect-button {
+	background-color: var(--danger-color);
+	border-color: var(--danger-color);
 }
 
 .control-group {
-	margin-bottom: 1em;
-	padding: 1em;
-	border: 1px solid #ccc;
-	border-radius: 5px;
+	background-color: var(--white-color);
+	padding: 1.5em;
+	border: 1px solid var(--border-color);
+	border-radius: 12px;
+	margin-bottom: 1.5em;
+	box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
-#device-selector,
-#model-selector,
-#connect-button {
-	font-size: 1.1em;
-	padding: 0.5em;
+fieldset.control-group { border-style: solid; }
+
+legend {
+	font-size: 1.25em;
+	font-weight: 600;
+	padding: 0 0.75em;
+	color: var(--text-color);
 }
 
-#device-actions {
-	margin-top: 1em;
-}
-
-.action-item {
+.fieldset-content {
 	display: flex;
+	gap: 1em;
 	align-items: center;
-	gap: 10px;
-	margin-bottom: 5px;
-}
-
-.action-item label {
-	font-weight: bold;
-	min-width: 150px;
-}
-
-.action-item input {
-	flex-grow: 1;
-}
-
-#log-output {
-	white-space: pre-wrap;
-	background-color: #f4f4f4;
-	border: 1px solid #ccc;
-	padding: 10px;
-	max-height: 400px;
-	overflow-y: auto;
-	margin-top: 1em;
-}
-
-#device-schema legend {
-	font-size: 1.2em;
-	font-weight: bold;
-	padding: 0 0.5em;
-	color: #1a2533;
 }
 
 .schema-field {
-	display: flex;
-	align-items: center;
+	display: grid;
+	grid-template-columns: 150px 1fr;
 	gap: 1em;
-	margin-bottom: 0.8em;
+	align-items: center;
+	margin-bottom: 1em;
 }
 
 .schema-field label {
 	font-weight: 500;
-	min-width: 120px;
 	text-align: right;
 	text-transform: capitalize;
 }
 
 .schema-field input, .schema-field select {
-	flex-grow: 1;
+	width: 100%;
+}
+
+.action-item {
+	display: grid;
+	grid-template-columns: 150px 1fr auto; 
+	gap: 1em;
+	align-items: center;
+	margin-bottom: 1em;
+	padding-bottom: 1em;
+	border-bottom: 1px solid var(--border-color);
+}
+.action-item:last-child {
+	border-bottom: none;
+	margin-bottom: 0;
+	padding-bottom: 0;
+}
+
+.action-item label {
+	font-weight: bold;
+	text-align: right;
+}
+
+.action-item input {
+	width: 100%;
+}
+
+.action-buttons {
+	display: flex;
+	gap: 0.5em;
+	justify-content: flex-start;
+}
+
+.log-container {
+	padding: 1.5em;
+	background-color: var(--dark-bg);
+	border-color: #444c56;
+}
+
+.log-container h3 {
+	margin-top: 0;
+	margin-bottom: 1em;
+	color: var(--dark-text);
+	font-size: 1.25em;
+	font-weight: 600;
+}
+
+#log-output {
+	white-space: pre-wrap;
+	word-break: break-all;
+	color: var(--dark-text);
+	max-height: 400px;
+	overflow-y: auto;
+	font-family: "SF Mono", "Fira Code", "Courier New", monospace;
+	font-size: 0.9em;
+	margin: 0;
+	padding: 0;
+	background: none;
+	border: none;
 }
