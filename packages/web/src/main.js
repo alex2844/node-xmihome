@@ -8,6 +8,7 @@ let activeDevice = null;
 
 // Явное приведение типов для DOM-элементов
 const deviceSelector = /** @type {HTMLSelectElement} */ (document.getElementById('device-selector'));
+const deviceAliasesEl = /** @type {HTMLParagraphElement} */ (document.getElementById('device-aliases'));
 const modelSelector = /** @type {HTMLSelectElement} */ (document.getElementById('model-selector'));
 const connectButton = /** @type {HTMLButtonElement} */ (document.getElementById('connect-button'));
 const deviceSchema = /** @type {HTMLFieldSetElement} */ (document.getElementById('device-schema'));
@@ -170,6 +171,7 @@ async function connectToDevice() {
 	connectButton.textContent = 'Connecting...';
 	try {
 		activeDevice = await Device.create(device, { log });
+		activeDevice.on('disconnect', () => disconnectDevice());
 		await activeDevice.connect();
 		log('info', 'Connected successfully!');
 		showDevicePanel(activeDevice);
@@ -248,6 +250,20 @@ function updateSchemaForm() {
 	deviceSchema.hidden = false;
 };
 
+function updateAliasInfo() {
+	const device = deviceSelector.value;
+	if (!device) {
+		deviceAliasesEl.hidden = true;
+		return;
+	}
+	const { alias } = devices[device] || {};
+	if (alias && alias.length > 0) {
+		deviceAliasesEl.innerHTML = `<strong>Also known as:</strong> ${alias.join(', ')}`;
+		deviceAliasesEl.hidden = false;
+	} else
+		deviceAliasesEl.hidden = true;
+};
+
 function updateModelSelector() {
 	modelSelector.innerHTML = '';
 	const device = deviceSelector.value;
@@ -287,6 +303,7 @@ async function main() {
 		connectButton.disabled = !deviceSelector.value;
 		if (deviceSelector.value)
 			updateModelSelector();
+		updateAliasInfo();
 		updateSchemaForm();
 	});
 	modelSelector.addEventListener('change', () => {
