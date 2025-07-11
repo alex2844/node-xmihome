@@ -5,7 +5,7 @@ import Device from 'xmihome/device.js';
  * Класс для управления умным увлажнителем Xiaomi Smart Humidifier 2 (deerma.humidifier.jsq2w).
  * @extends Device
  */
-export default class extends Device {
+export default class DeermaHumidifier extends Device {
 	/** @type {string} */
 	static name = 'Xiaomi Smart Humidifier 2';
 
@@ -34,7 +34,7 @@ export default class extends Device {
 	 * @property {Property} mode Режим работы.
 	 * @property {Property} status Статус устройства.
 	 */
-	static properties = {
+	properties = {
 		'on': { siid: 2, piid: 1, format: 'bool', access: ['read', 'write', 'notify'] },
 		'current_temperature': { siid: 3, piid: 7, format: 'float', access: ['read', 'notify'] },
 		'current_humidity': { siid: 3, piid: 1, format: 'uint8', access: ['read', 'notify'] },

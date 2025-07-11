@@ -9,23 +9,18 @@ import Bluetooth, { BluetoothDevice } from './bluetooth.js';
 export default class Device extends EventEmitter {
 	/** @type {string[]} */ static alias = [];
 	/** @type {string[]} */ static models = [];
-	/** @type {Object.<string, Property>} */ static properties = {};
 	/** @type {UuidMapping} */ static uuidMap = {
 		services: {},
 		characteristics: {}
 	};
 	/** @type {Object.<string, typeof Device>} */ static #classes = {};
 
-	/**
-	 * @param {Object.<string, typeof Device>} models
-	 */
+	/** @param {Object.<string, typeof Device>} models */
 	static registerModels(models) {
 		this.#classes = models;
 	};
 
-	/**
-	 * @returns {string[]}
-	 */
+	/** @returns {string[]} */
 	static getModels() {
 		return Object.keys(this.#classes);
 	};
@@ -62,10 +57,9 @@ export default class Device extends EventEmitter {
 		return new model(device, client);
 	};
 
-	/**
-	 * @type {Object.<string, {characteristic: object}>}
-	 */
-	notify = {};
+	/** @type {Object.<string, Property>} */ properties = {};
+
+	/** @type {Object.<string, {characteristic: object}>} */ notify = {};
 
 	/** @type {Config} */ config = null;
 
@@ -83,26 +77,9 @@ export default class Device extends EventEmitter {
 		this.client = client;
 	};
 
-	/**
-	 * @returns {typeof Device}
-	 */
+	/** @returns {typeof Device} */
 	get class() {
 		return (/** @type {typeof Device} */ (/** @type {unknown} */ (this.constructor)));
-	};
-
-	/**
-	 * @type {Object.<string, Property & {key: string}>}
-	 */
-	get properties() {
-		const /** @type {Object.<string, Property & {key: string}>} */ properties = {};
-		if (this.class.properties)
-			for (const key in this.class.properties) {
-				properties[key] = {
-					...this.class.properties[key],
-					key
-				};
-			}
-		return properties;
 	};
 
 	async auth() {}
@@ -159,7 +136,7 @@ export default class Device extends EventEmitter {
 	};
 
 	/**
-	 * @param {string|Property & {key: string}} prop
+	 * @param {string|Property} prop
 	 * @param {function} callback
 	 * @throws {Error}
 	 */
@@ -188,7 +165,7 @@ export default class Device extends EventEmitter {
 	};
 
 	/**
-	 * @param {string|Property & {key: string}} prop
+	 * @param {string|Property} prop
 	 */
 	async stopNotify(prop) {
 		if (typeof prop === 'string')

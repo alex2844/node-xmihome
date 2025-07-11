@@ -5,7 +5,7 @@ import Device from 'xmihome/device.js';
  * Класс для управления датчиком температуры и влажности Miaomiaoce Sensor HT.T8 (miaomiaoce.sensor_ht.t8).
  * @extends Device
  */
-export default class extends Device {
+export default class MiaomiaoceSensor extends Device {
 	/** @type {string} */
 	static name = 'Temperature Humidity Sensor';
 
@@ -18,6 +18,18 @@ export default class extends Device {
 	static models = [
 		'miaomiaoce.sensor_ht.t8'
 	];
+
+	/** @type {UuidMapping} */
+	static uuidMap = {
+		services: {
+			'ebe0ccb0-7a0a-4b0c-8a1a-6ff2997da3a6': '001b'
+		},
+		characteristics: {
+			'ebe0ccc4-7a0a-4b0c-8a1a-6ff2997da3a6': '0036',
+			'ebe0ccb7-7a0a-4b0c-8a1a-6ff2997da3a6': '001c',
+			'ebe0ccc1-7a0a-4b0c-8a1a-6ff2997da3a6': '002f'
+		}
+	};
 
 	/**
 	 * @typedef {Omit<Property, 'read'> & {
@@ -45,7 +57,7 @@ export default class extends Device {
 	 * @property {TimeProperty} time Время и временная зона устройства.
 	 * @property {StatusProperty} status Статус (температура и влажность).
 	 */
-	static properties = {
+	properties = {
 		'battery': {
 			service: 'ebe0ccb0-7a0a-4b0c-8a1a-6ff2997da3a6',
 			characteristic: 'ebe0ccc4-7a0a-4b0c-8a1a-6ff2997da3a6',
@@ -77,18 +89,6 @@ export default class extends Device {
 				temp: buf.readUInt16LE(0) / 100,
 				hum: buf.readUInt8(2)
 			})
-		}
-	};
-
-	/** @type {UuidMapping} */
-	static uuidMap = {
-		services: {
-			'ebe0ccb0-7a0a-4b0c-8a1a-6ff2997da3a6': '001b'
-		},
-		characteristics: {
-			'ebe0ccc4-7a0a-4b0c-8a1a-6ff2997da3a6': '0036',
-			'ebe0ccb7-7a0a-4b0c-8a1a-6ff2997da3a6': '001c',
-			'ebe0ccc1-7a0a-4b0c-8a1a-6ff2997da3a6': '002f'
 		}
 	};
 };

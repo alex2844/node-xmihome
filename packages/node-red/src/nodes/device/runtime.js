@@ -126,11 +126,9 @@ export class DeviceNode {
 		const deviceConfig = this.#RED.util.evaluateNodeProperty(this.#config.device, this.#config.deviceType, this.#node, msg);
 		if (!deviceConfig || (typeof deviceConfig !== 'object'))
 			throw new Error('Device configuration is missing or not an object');
-		const /** @type {DeviceConfig} */ device = ['id', 'name', 'address', 'mac', 'token', 'model'].reduce((res, key) => {
-			if ((deviceConfig[key] != null) && (deviceConfig[key] !== ''))
-				res[key] = deviceConfig[key];
-			return res;
-		}, {});
+		const /** @type {DeviceConfig} */ device = Object.fromEntries(
+			Object.entries(deviceConfig).filter(([_, value]) => value != null && value !== '')
+		);
 		if (!device.id && !device.address && !device.mac)
 			throw new Error('Device configuration must contain at least id, address, or mac');
 		if (!device.model && device.mac && !device.name)

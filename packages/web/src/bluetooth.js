@@ -7,9 +7,7 @@ import { UUID } from 'xmihome/constants.js';
  * @extends EventEmitter
  */
 export class BluetoothCharacteristic extends EventEmitter {
-	/**
-	 * @param {globalThis.BluetoothRemoteGATTCharacteristic} characteristic
-	 */
+	/** @param {globalThis.BluetoothRemoteGATTCharacteristic} characteristic */
 	constructor(characteristic) {
 		super();
 		this.native = characteristic;
@@ -79,9 +77,7 @@ export class BluetoothDevice extends EventEmitter {
 		}
 	};
 
-	/**
-	 * @param {{ service: string, characteristic: string }} props
-	 */
+	/** @param {{ service: string, characteristic: string }} props */
 	async getCharacteristic({ service: serviceUUID, characteristic: characteristicUUID }) {
 		const path = `${serviceUUID}/${characteristicUUID}`;
 		if (this.characteristics.has(path))
@@ -105,9 +101,7 @@ export class BluetoothDevice extends EventEmitter {
 };
 
 export default class Bluetooth {
-	/**
-	 * @param {any} client
-	 */
+	/** @param {any} client */
 	constructor(client) {
 		this.client = client;
 	};

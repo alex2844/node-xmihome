@@ -43,6 +43,7 @@ import {
  *   read?: (buf: Buffer) => any;
  *   notify?: (buf: Buffer) => any;
  *   write?: (data: any) => Buffer;
+ *   key?: string;
  * } & (BluetoothProperty | MiotProperty)} Property
  */
 
@@ -68,12 +69,6 @@ export default class Device extends EventEmitter {
 	 * @type {string[]}
 	 */
 	static models = [];
-
-	/**
-	 * Описание свойств устройства.
-	 * @type {Object.<string, Property>}
-	 */
-	static properties = {};
 
 	/**
 	 * Карта для преобразования полных 128-битных UUID в короткие 16-битные.
@@ -182,14 +177,20 @@ export default class Device extends EventEmitter {
 				client?.log('debug', `MIoT Spec details:`, spec);
 				return new (class extends Device {
 					static name = spec.name;
-					static properties = spec.properties;
 					static spec = `https://home.miot-spec.com/spec?type=${spec.type}`;
+					properties = spec.properties;
 				})(device, client);
 			}
 		}
 		client?.log('info', `Using base Device class for model ${device.model || device.name}`);
 		return new this(device, client);
 	};
+
+	/**
+	 * Описание свойств устройства.
+	 * @type {Object.<string, Property>}
+	 */
+	properties = {};
 
 	/**
 	 * Тип подключения устройства.
@@ -277,6 +278,10 @@ export default class Device extends EventEmitter {
 			if (!this.config.model)
 				throw new Error('Model value not passed');
 		}
+		if (this.properties)
+			for (const key in this.properties) {
+				this.properties[key].key = key;
+			}
 		this.on('external_disconnect', this.#handleExternalDisconnect);
 	};
 
@@ -286,22 +291,6 @@ export default class Device extends EventEmitter {
 	 */
 	get class() {
 		return (/** @type {typeof Device} */ (/** @type {unknown} */ (this.constructor)));
-	};
-
-	/**
-	 * Возвращает объект свойств устройства, определенных в `this.constructor.properties`.
-	 * @type {Object.<string, Property & {key: string}>}
-	 */
-	get properties() {
-		const /** @type {Object.<string, Property & {key: string}>} */ properties = {};
-		if (this.class.properties)
-			for (const key in this.class.properties) {
-				properties[key] = {
-					...this.class.properties[key],
-					key
-				};
-			}
-		return properties;
 	};
 
 	/**
@@ -610,7 +599,7 @@ export default class Device extends EventEmitter {
 
 	/**
 	 * Начинает прослушивание уведомлений об изменении значения свойства.
-	 * @param {string|Property & {key: string}} prop Ключ свойства или объект свойства.
+	 * @param {string|Property} prop Ключ свойства или объект свойства.
 	 * @param {function} callback Функция обратного вызова, вызываемая при изменении значения свойства.
 	 * @throws {Error} Если свойство не поддерживает уведомления.
 	 */
@@ -618,7 +607,6 @@ export default class Device extends EventEmitter {
 		let lastValue = null;
 		if (typeof prop === 'string')
 			prop = this.properties[prop];
-		console.log('### startNotify:prop', prop, this.properties);
 		this.client.log('info', `Starting notifications for property '${prop.key}' on ${this.getName()}`);
 		if (!prop.access?.includes('notify'))
 			throw new Error('The property does not support notifications');
@@ -637,7 +625,7 @@ export default class Device extends EventEmitter {
 			}
 			this.notify[prop.key].characteristic.on('valuechanged', (/** @type {any} */ buf) => {
 				const value = (prop.notify || prop.read)(buf);
-				const str = JSON.stringify(value)
+				const str = JSON.stringify(value);
 				this.client.log('debug', `Received BT notification for '${prop.key}': raw=${buf?.toString('hex')}, parsed=${str}`);
 				if (str !== lastValue) {
 					lastValue = str;
@@ -668,7 +656,7 @@ export default class Device extends EventEmitter {
 
 	/**
 	 * Останавливает прослушивание уведомлений об изменении значения свойства.
-	 * @param {string|Property & {key: string}} prop Ключ свойства или объект свойства.
+	 * @param {string|Property} prop Ключ свойства или объект свойства.
 	 */
 	async stopNotify(prop) {
 		if (typeof prop === 'string')

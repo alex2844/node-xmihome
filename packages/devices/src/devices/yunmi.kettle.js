@@ -9,7 +9,7 @@ const isBrowser = typeof window !== 'undefined';
  * Класс для управления умным чайником Mi Smart Kettle (yunmi.kettle.v2).
  * @extends Device
  */
-export default class extends Device {
+export default class YunmiKettle extends Device {
 	/** @type {string} */
 	static name = 'Mi Smart Kettle';
 
@@ -22,6 +22,22 @@ export default class extends Device {
 	static models = [
 		'yunmi.kettle.v2'
 	];
+
+	/** @type {UuidMapping} */
+	static uuidMap = {
+		services: {
+			'0000fe95-0000-1000-8000-00805f9b34fb': '0023',
+			'01344736-0000-1000-8000-262837236156': '0038'
+		},
+		characteristics: {
+			'00000010-0000-1000-8000-00805f9b34fb': '002b',
+			'00000001-0000-1000-8000-00805f9b34fb': '0024',
+			'0000aa01-0000-1000-8000-00805f9b34fb': '0039',
+			'0000aa04-0000-1000-8000-00805f9b34fb': '0040',
+			'0000aa05-0000-1000-8000-00805f9b34fb': '0043',
+			'0000aa02-0000-1000-8000-00805f9b34fb': '003c'
+		}
+	};
 
 	/**
 	 * Возможные значения свойства `action` (действие чайника).
@@ -69,7 +85,7 @@ export default class extends Device {
 	 *     keep_warm_type: string,
 	 *     keep_warm_time: number
 	 *   }
-	 * }} KettleStatusProperty
+	 * }} StatusProperty
 	 */
 	/**
 	 * @type {({
@@ -78,16 +94,16 @@ export default class extends Device {
 	 *   keep_warm_settings: KeepWarmSettingsProperty,
 	 *   keep_warm_duration: KeepWarmDurationProperty,
 	 *   keep_warm_refill: KeepWarmRefillProperty,
-	 *   status: KettleStatusProperty
+	 *   status: StatusProperty
 	 * }) & { [x: string]: Property }}
 	 * @property {Property} authInit Характеристика инициализации аутентификации.
 	 * @property {Property} auth Характеристика аутентификации.
-	 * @property {Property} keep_warm_settings Настройки режима поддержания тепла. Позволяет установить целевую температуру и тип подогрева.
-	 * @property {Property} keep_warm_duration Длительность поддержания тепла в часах. Принимает значение от 1 до 12.
-	 * @property {Property} keep_warm_refill Режим "Не кипятить повторно".
-	 * @property {Property} status Статус чайника.
+	 * @property {KeepWarmSettingsProperty} keep_warm_settings Настройки режима поддержания тепла. Позволяет установить целевую температуру и тип подогрева.
+	 * @property {KeepWarmDurationProperty} keep_warm_duration Длительность поддержания тепла в часах. Принимает значение от 1 до 12.
+	 * @property {KeepWarmRefillProperty} keep_warm_refill Режим "Не кипятить повторно".
+	 * @property {StatusProperty} status Статус чайника.
 	 */
-	static properties = {
+	properties = {
 		'authInit': {
 			service: '0000fe95-0000-1000-8000-00805f9b34fb',
 			characteristic: '00000010-0000-1000-8000-00805f9b34fb',
@@ -103,15 +119,15 @@ export default class extends Device {
 			characteristic: '0000aa01-0000-1000-8000-00805f9b34fb',
 			access: ['read', 'write'],
 			read: buf => ({
-				type: this.PROP_KEEP_WARM_TYPE[buf.readUInt8(0)],
+				type: YunmiKettle.PROP_KEEP_WARM_TYPE[buf.readUInt8(0)],
 				temperature: buf.readUInt8(1)
 			}),
 			write: ({ temperature = 80, type = 'heat_to_temperature' } = {}) => {
 				if ((temperature < 40) || (temperature > 90))
 					throw new Error('Temperature must be between 40 and 90 degrees.');
-				const typeIndex = this.PROP_KEEP_WARM_TYPE.indexOf(type);
+				const typeIndex = YunmiKettle.PROP_KEEP_WARM_TYPE.indexOf(type);
 				if (typeIndex === -1)
-					throw new Error(`Invalid keep_warm_type: ${type}. Available: ${this.PROP_KEEP_WARM_TYPE.join(', ')}`);
+					throw new Error(`Invalid keep_warm_type: ${type}. Available: ${YunmiKettle.PROP_KEEP_WARM_TYPE.join(', ')}`);
 				const buf = Buffer.alloc(2);
 				buf.writeUInt8(typeIndex, 0);
 				buf.writeUInt8(temperature, 1);
@@ -147,29 +163,13 @@ export default class extends Device {
 			characteristic: '0000aa02-0000-1000-8000-00805f9b34fb',
 			access: ['notify'],
 			notify: buf => ({
-				action: this.PROP_ACTION[buf.readUInt8(0)],
-				mode: this.PROP_MODE[buf.readUInt8(1)],
+				action: YunmiKettle.PROP_ACTION[buf.readUInt8(0)],
+				mode: YunmiKettle.PROP_MODE[buf.readUInt8(1)],
 				keep_warm_set_temperature: buf.readUInt8(4),
 				current_temperature: buf.readUInt8(5),
-				keep_warm_type: this.PROP_KEEP_WARM_TYPE[buf.readUInt8(6)],
+				keep_warm_type: YunmiKettle.PROP_KEEP_WARM_TYPE[buf.readUInt8(6)],
 				keep_warm_time: buf.readUInt16LE(7)
 			})
-		}
-	};
-
-	/** @type {UuidMapping} */
-	static uuidMap = {
-		services: {
-			'0000fe95-0000-1000-8000-00805f9b34fb': '0023',
-			'01344736-0000-1000-8000-262837236156': '0038'
-		},
-		characteristics: {
-			'00000010-0000-1000-8000-00805f9b34fb': '002b',
-			'00000001-0000-1000-8000-00805f9b34fb': '0024',
-			'0000aa01-0000-1000-8000-00805f9b34fb': '0039',
-			'0000aa04-0000-1000-8000-00805f9b34fb': '0040',
-			'0000aa05-0000-1000-8000-00805f9b34fb': '0043',
-			'0000aa02-0000-1000-8000-00805f9b34fb': '003c'
 		}
 	};
 
@@ -219,11 +219,11 @@ export default class extends Device {
 		]);
 		this.client.log('debug', `Kettle ${this.config.mac}: Calculated ma=${ma.toString('hex')}, mb=${mb.toString('hex')}`);
 
-		const authInit = await this.device.getCharacteristic(this.class.properties.authInit);
+		const authInit = await this.device.getCharacteristic(this.properties.authInit);
 		this.client.log('debug', `Kettle ${this.config.mac}: Writing auth init sequence`);
 		await authInit.writeValue(Buffer.from([0x90, 0xCA, 0x85, 0xDE]));
 
-		const auth = await this.device.getCharacteristic(this.class.properties.auth);
+		const auth = await this.device.getCharacteristic(this.properties.auth);
 		await auth.startNotifications();
 		this.client.log('debug', `Kettle ${this.config.mac}: Started auth notifications, writing token`);
 

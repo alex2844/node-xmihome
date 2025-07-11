@@ -25,6 +25,7 @@ function check_deps() {
 }
 
 function list_project_files() {
+	# git ls-files -z | xargs -0 tar -czvf "./$(basename "${PWD}")-$(date +%Y_%m_%d_%H_%M_%S).tgz"
 	git ls-files -c --others --exclude-standard
 }
 

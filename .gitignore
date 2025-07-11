@@ -4,3 +4,4 @@ docs_apply.sh
 dist
 .env
 .dev
+*.tgz
