@@ -110,13 +110,9 @@ export default class Bluetooth {
 	async getDevice(options) {
 		this.client.log('debug', '[WebBT] Requesting device with options:', options);
 		const device = await navigator.bluetooth.requestDevice({
-			filters: [{
-				services: UUID
-			}],
+			filters: UUID.map(service => ({ services: [service] })),
 			optionalServices: [...new Set(
-				Object.values(options.properties)
-				.map(prop => prop.service)
-				.filter(Boolean)
+				Object.values(options.properties).map(prop => prop.service).filter(Boolean)
 			)]
 		});
 		return new BluetoothDevice(device, this.client);

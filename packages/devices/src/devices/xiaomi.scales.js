@@ -21,6 +21,11 @@ export default class XiaomiScales extends Device {
 	static name = 'Xiaomi Body Composition Scale';
 
 	/** @type {string[]} */
+	static alias = [
+		'MIBFS'
+	];
+
+	/** @type {string[]} */
 	static models = [
 		'xiaomi.scales.ms115'
 	];
