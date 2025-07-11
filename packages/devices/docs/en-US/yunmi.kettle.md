@@ -10,6 +10,15 @@ Class for managing the Mi Smart Kettle (yunmi.kettle.v2).
 
 - `MiKettle`
 
+## Configuration
+
+To connect and authenticate with the kettle, its MAC address must be provided in the device configuration. An optional token can also be provided for authentication.
+
+| Key     | Type     | Description                                                                                                   |
+|---------|----------|---------------------------------------------------------------------------------------------------------------|
+| `mac`   | `string` | **Required.** The MAC address of the kettle.                                                                   |
+| `token` | `string` | (Optional) A 12-byte (24-character hex) token. If not provided, a random token will be generated for the session. |
+
 ## Properties (Bluetooth)
 
 | Name | Description | Access | Service / Characteristic (Short ID) |

@@ -24,7 +24,7 @@ To calculate advanced body metrics, the device requires user data. This data sho
 
 | Name          | Description                                                                                             | Access           | Service / Characteristic (Short ID) |
 |---------------|---------------------------------------------------------------------------------------------------------|------------------|-------------------------------------|
-| `measurement` | Characteristic for receiving measurement data. Returns intermediate (weight only) and final (full report) data. | `read`, `notify` | `0017` / `001c`                     |
+| `measurement` | Characteristic for receiving measurement data. Returns intermediate (weight only) and final (full report with BMI, body fat, muscle mass, water, bone mass, protein, visceral fat, basal metabolism, body age, ideal weight, body type, and body score) data. | `read`, `notify` | `0017` / `001c`                     |
 
 ## Constants
 
@@ -103,6 +103,13 @@ The device uses the following constant values, which can be seen in the output o
 | `Normal`    | Normal      |
 | `High`      | High        |
 | `Very High` | Very High   |
+
+### Basal Metabolism Status (`basalMetabolism.status`)
+
+| Value          | Description  |
+|----------------|--------------|
+| `Insufficient` | Insufficient |
+| `Normal`       | Normal       |
 
 ## UUID Map
 
