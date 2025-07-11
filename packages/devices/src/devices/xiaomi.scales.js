@@ -1,13 +1,13 @@
 import Device from 'xmihome/device.js';
 /** @import { XiaomiMiHome } from 'xmihome' */
-/** @import { Config as DeviceConfig, Property, UuidMapping } from 'xmihome/device.js' */
+/** @import { Config as DeviceConfig, Property, UuidMapping, Schema } from 'xmihome/device.js' */
 
 /**
  * @typedef {DeviceConfig & {
  *   user?: {
  *     height: number,
  *     birthday: string,
- *     gender: 'male' | 'female'
+ *     gender: 'male'|'female'
  *   }
  * }} Config
  */
@@ -33,6 +33,16 @@ export default class XiaomiScales extends Device {
 		characteristics: {
 			'00002a9c-0000-1000-8000-00805f9b34fb': '001c'
 		}
+	};
+
+	/** @type {Schema} */
+	static schema = {
+		key: 'user',
+		fields: [
+			{ key: 'height', type: 'number' },
+			{ key: 'birthday', type: 'date' },
+			{ key: 'gender', type: 'select', options: ['male', 'female'] }
+		]
 	};
 
 	/**

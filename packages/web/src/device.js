@@ -1,6 +1,6 @@
 import EventEmitter from 'events';
 import Bluetooth, { BluetoothDevice } from './bluetooth.js';
-/** @import { Config, Property, UuidMapping } from 'xmihome/device.js' */
+/** @import { Config, Property, UuidMapping, Schema } from 'xmihome/device.js' */
 
 /**
  * Легковесная версия базового класса Device для браузера.
@@ -13,6 +13,7 @@ export default class Device extends EventEmitter {
 		services: {},
 		characteristics: {}
 	};
+	/** @type {Schema|null} */ static schema = null;
 	/** @type {Object.<string, typeof Device>} */ static #classes = {};
 
 	/** @param {Object.<string, typeof Device>} models */

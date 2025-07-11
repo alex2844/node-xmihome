@@ -1,9 +1,7 @@
 import Device from 'xmihome/device.js';
 import crypto from 'crypto';
 /** @import { XiaomiMiHome } from 'xmihome' */
-/** @import { Config, Property, UuidMapping } from 'xmihome/device.js' */
-
-const isBrowser = typeof window !== 'undefined';
+/** @import { Config, Property, UuidMapping, Schema } from 'xmihome/device.js' */
 
 /**
  * Класс для управления умным чайником Mi Smart Kettle (yunmi.kettle.v2).
@@ -37,6 +35,13 @@ export default class YunmiKettle extends Device {
 			'0000aa05-0000-1000-8000-00805f9b34fb': '0043',
 			'0000aa02-0000-1000-8000-00805f9b34fb': '003c'
 		}
+	};
+
+	/** @type {Schema} */
+	static schema = {
+		fields: [
+			{ key: 'mac', type: 'text' }
+		]
 	};
 
 	/**
@@ -193,22 +198,8 @@ export default class YunmiKettle extends Device {
 
 	/** @override */
 	async auth() {
-		if (isBrowser) {
-			const storageKey = `mac_${this.class.models[0]}`;
-			let mac = localStorage.getItem(storageKey);
-			if (mac) {
-				if (!confirm(`Use saved MAC address: ${mac}?`))
-					mac = null;
-			}
-			if (!mac) {
-				mac = prompt('Enter MiKettle MAC for auth:', 'XX:XX:XX:XX:XX:XX');
-				if (mac)
-					localStorage.setItem(storageKey, mac);
-			}
-			if (!mac)
-				throw new Error('MAC address is required for authentication.');
-			this.config.mac = mac;
-		}
+		if (!this.config.mac)
+			throw new Error('Kettle authentication requires a MAC address.');
 		this.client.log('info', `Kettle ${this.config.mac}: Starting Bluetooth authentication`);
 		const mac = this.config.mac.split(':').map((/** @type {string} */ s) => parseInt(s, 16)).reverse();
 		const ma = Buffer.from([

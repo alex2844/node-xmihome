@@ -24,6 +24,7 @@ let activeDevice = null;
 const deviceSelector = /** @type {HTMLSelectElement} */ (document.getElementById('device-selector'));
 const modelSelector = /** @type {HTMLSelectElement} */ (document.getElementById('model-selector'));
 const connectButton = /** @type {HTMLButtonElement} */ (document.getElementById('connect-button'));
+const deviceSchema = /** @type {HTMLDivElement} */ (document.getElementById('device-schema'));
 const devicePanel = /** @type {HTMLDivElement} */ (document.getElementById('device-panel'));
 const deviceNameEl = /** @type {HTMLHeadingElement} */ (document.getElementById('device-name'));
 const deviceActionsEl = /** @type {HTMLDivElement} */ (document.getElementById('device-actions'));
@@ -130,16 +131,33 @@ function showDevicePanel(device) {
 };
 
 async function connectToDevice() {
-	const device = deviceSelector.value;
-	const model = modelSelector.value || devices[device]?.models?.[0];
+	const { models, schema } = devices[deviceSelector.value] || {};
+	const model = modelSelector.value || models?.[0];
 	if (!model || activeDevice)
 		return;
+	const device = { model };
+	if (schema) {
+		for (const field of schema.fields) {
+			const inputId = `schema-input-${models?.[0] || deviceSelector.value}-${field.key}`;
+			const input = /** @type {HTMLInputElement|HTMLSelectElement} */ (document.getElementById(inputId));
+			if (input && input.value) {
+				if (schema.key) {
+					if (!device[schema.key])
+						device[schema.key] = {};
+					device[schema.key][field.key] = input.value;
+				}else
+					device[field.key] = input.value;
+				localStorage.setItem(inputId, input.value);
+			}
+		}
+		deviceSchema.hidden = true;
+	}
 	logOutput.textContent = '';
 	log('info', 'Starting connection...');
 	connectButton.disabled = true;
 	connectButton.textContent = 'Connecting...';
 	try {
-		activeDevice = await Device.create({ model }, { log });
+		activeDevice = await Device.create(device, { log });
 		await activeDevice.connect();
 		log('info', 'Connected successfully!');
 		showDevicePanel(activeDevice);
@@ -164,9 +182,58 @@ async function disconnectDevice() {
 	}
 	activeDevice = null;
 	hideDevicePanel();
+	updateSchemaForm();
 	deviceSelector.disabled = false;
 	modelSelector.disabled = false;
 	modelSelector.hidden = true;
+};
+
+function updateSchemaForm() {
+	deviceSchema.innerHTML = '';
+	const device = deviceSelector.value;
+	const { models, schema } = devices[device] || {};
+	if (!schema) {
+		deviceSchema.hidden = true;
+		return;
+	}
+	const legend = document.createElement('legend');
+	legend.textContent = 'Device Configuration';
+	deviceSchema.appendChild(legend);
+	for (const field of schema.fields) {
+		const fieldWrapper = document.createElement('div');
+		fieldWrapper.className = 'schema-field';
+
+		const inputId = `schema-input-${models?.[0] || device}-${field.key}`;
+
+		const label = document.createElement('label');
+		label.textContent = field.key;
+		label.htmlFor = inputId;
+
+		let input;
+		if (field.type === 'select') {
+			input = document.createElement('select');
+			for (const value of field.options) {
+				const option = document.createElement('option');
+				option.value = option.text = value;
+				input.appendChild(option);
+			}
+		} else {
+			input = document.createElement('input');
+			input.type = field.type;
+		}
+
+		input.id = inputId;
+		input.name = field.key;
+
+		const savedValue = localStorage.getItem(inputId);
+		if (savedValue)
+			input.value = savedValue;
+
+		fieldWrapper.appendChild(label);
+		fieldWrapper.appendChild(input);
+		deviceSchema.appendChild(fieldWrapper);
+	}
+	deviceSchema.hidden = false;
 };
 
 function updateModelSelector() {
@@ -208,6 +275,7 @@ async function main() {
 		connectButton.disabled = !deviceSelector.value;
 		if (deviceSelector.value)
 			updateModelSelector();
+		updateSchemaForm();
 	});
 	modelSelector.addEventListener('change', () => {
 		connectButton.disabled = !modelSelector.value;

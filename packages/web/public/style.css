@@ -47,3 +47,28 @@ body {
 	overflow-y: auto;
 	margin-top: 1em;
 }
+
+#device-schema legend {
+	font-size: 1.2em;
+	font-weight: bold;
+	padding: 0 0.5em;
+	color: #1a2533;
+}
+
+.schema-field {
+	display: flex;
+	align-items: center;
+	gap: 1em;
+	margin-bottom: 0.8em;
+}
+
+.schema-field label {
+	font-weight: 500;
+	min-width: 120px;
+	text-align: right;
+	text-transform: capitalize;
+}
+
+.schema-field input, .schema-field select {
+	flex-grow: 1;
+}

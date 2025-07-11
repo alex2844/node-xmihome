@@ -54,6 +54,16 @@ import {
  */
 
 /**
+ * @typedef {object} Schema
+ * @property {string} [key]
+ * @property {Array<{
+ *   key: string,
+ *   type: 'text'|'number'|'date'|'select',
+ *   options?: string[]
+ * }>} fields
+ */
+
+/**
  * Базовый класс для управления устройствами Xiaomi.
  * @extends EventEmitter
  */
@@ -78,6 +88,13 @@ export default class Device extends EventEmitter {
 		services: {},
 		characteristics: {}
 	};
+
+	/**
+	 * Схема для дополнительных полей конфигурации, которые требуются устройству.
+	 * Используется UI для динамической генерации форм. Если null, форма не требуется.
+	 * @type {Schema|null}
+	 */
+	static schema = null;
 
 	/**
 	 * Кэш для списка классов моделей, должен быть заполнен извне.
