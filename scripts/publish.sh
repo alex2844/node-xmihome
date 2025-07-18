@@ -36,16 +36,17 @@ function refresh_nodered_flow() {
 		return
 	fi
 	local post_response=$(
-		curl -s -X POST \
+		curl -sL -X POST \
 			-H "cookie: ${cookie}" \
 			--data-urlencode "_csrf=${csrf_token}" \
 			--data-urlencode "module=${pkg_name}" \
 			"${NODERED_FLOWS_URL}"
 	)
-	if [[ "${post_response}" == *"added"* || "${post_response}" == *"updated"* ]]; then
+	if [[ "${post_response,,}" == *"added"* ]] || [[ "${post_response,,}" == *"updated"* ]]; then
 		echo "   - ✅ Обновление на Node-RED Flows завершено."
 	else
-		echo "   - ⚠️ Не удалось обновить модуль в Node-RED. Ответ сервера не содержит подтверждения. post_response='${post_response}'"
+		echo "   - ⚠️ Не удалось обновить модуль в Node-RED. Ответ сервера не содержит подтверждения."
+		echo "   - Ответ сервера: ${post_response}"
 	fi
 }
 

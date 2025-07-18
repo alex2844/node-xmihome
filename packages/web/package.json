@@ -1,6 +1,6 @@
 {
 	"name": "xmihome-web",
-	"version": "1.1.1",
+	"version": "1.1.2",
 	"private": true,
 	"type": "module",
 	"description": "A demo web application for controlling Xiaomi devices via Web Bluetooth using the xmihome library.",

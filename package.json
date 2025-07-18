@@ -1,6 +1,6 @@
 {
 	"name": "node-xmihome",
-	"version": "1.1.1",
+	"version": "1.1.2",
 	"private": true,
 	"type": "module",
 	"description": "The all-in-one Node.js toolkit for Xiaomi Mi Home. Provides a core library and Node-RED nodes for controlling devices via MiIO, MIoT Cloud, and Bluetooth (BLE).",

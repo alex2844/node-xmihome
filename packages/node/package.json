@@ -1,6 +1,6 @@
 {
 	"name": "xmihome",
-	"version": "1.1.1",
+	"version": "1.1.2",
 	"private": false,
 	"type": "module",
 	"description": "The core library for interacting with Xiaomi Mi Home devices via Cloud, MiIO, and Bluetooth.",
@@ -25,6 +25,9 @@
 	},
 	"optionalDependencies": {
 		"dbus-next": "github:dcodeIO/node-dbus-next"
+	},
+	"engines": {
+		"node": ">=18.0.0"
 	},
 	"license": "MIT",
 	"repository": {
