@@ -3,6 +3,7 @@
 	"version": "1.1.1",
 	"private": false,
 	"type": "module",
+	"description": "Device definitions and specifications for the node-xmihome ecosystem.",
 	"exports": {
 		".": "./src/index.js",
 		"./*": "./src/*"
@@ -15,5 +16,15 @@
 		"type": "git",
 		"url": "git+https://github.com/alex2844/node-xmihome.git",
 		"directory": "packages/devices"
-	}
+	},
+	"keywords": [
+		"xmihome",
+		"xmihome-devices",
+		"xiaomi",
+		"mihome",
+		"miot",
+		"bluetooth",
+		"devices",
+		"smarthome"
+	]
 }

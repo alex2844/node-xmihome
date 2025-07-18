@@ -3,6 +3,7 @@
 	"version": "1.1.1",
 	"private": false,
 	"type": "module",
+	"description": "Node-RED nodes for controlling Xiaomi Mi Home devices using the xmihome library.",
 	"scripts": {
 		"test": "tsc -p ./jsconfig.json",
 		"build": "bun ./build.js",
@@ -36,5 +37,17 @@
 		"type": "git",
 		"url": "git+https://github.com/alex2844/node-xmihome.git",
 		"directory": "packages/node-red"
-	}
+	},
+	"keywords": [
+		"node-red",
+		"xmihome",
+		"xiaomi",
+		"mihome",
+		"miot",
+		"bluetooth",
+		"iot",
+		"smarthome",
+		"home-automation",
+		"node-red-contrib"
+	]
 }

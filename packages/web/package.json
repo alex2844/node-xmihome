@@ -3,6 +3,7 @@
 	"version": "1.1.1",
 	"private": true,
 	"type": "module",
+	"description": "A demo web application for controlling Xiaomi devices via Web Bluetooth using the xmihome library.",
 	"scripts": {
 		"test": "tsc -p ./jsconfig.json",
 		"build": "bun ./build.js",
@@ -19,5 +20,14 @@
 		"type": "git",
 		"url": "git+https://github.com/alex2844/node-xmihome.git",
 		"directory": "packages/web"
-	}
+	},
+	"keywords": [
+		"xmihome",
+		"xiaomi",
+		"web-bluetooth",
+		"bluetooth",
+		"iot",
+		"smarthome",
+		"demo"
+	]
 }

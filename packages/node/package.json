@@ -3,6 +3,7 @@
 	"version": "1.1.1",
 	"private": false,
 	"type": "module",
+	"description": "The core library for interacting with Xiaomi Mi Home devices via Cloud, MiIO, and Bluetooth.",
 	"exports": {
 		".": "./src/index.js",
 		"./*": "./src/*"
@@ -30,5 +31,19 @@
 		"type": "git",
 		"url": "git+https://github.com/alex2844/node-xmihome.git",
 		"directory": "packages/node"
-	}
+	},
+	"keywords": [
+		"xmihome",
+		"xiaomi",
+		"mihome",
+		"miot",
+		"miio",
+		"bluetooth",
+		"ble",
+		"iot",
+		"smarthome",
+		"home-automation",
+		"library",
+		"api"
+	]
 }
