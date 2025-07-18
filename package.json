@@ -1,12 +1,13 @@
 {
 	"name": "node-xmihome",
-	"version": "1.0.0",
+	"version": "1.1.1",
 	"private": true,
 	"type": "module",
 	"scripts": {
 		"test": "tsc -p ./jsconfig.json",
 		"build": "npm run build --workspaces --if-present",
 		"clean": "rm -rf ./packages/*/dist",
+		"publish": "./scripts/publish.sh",
 		"docs": "./scripts/docs_gen.sh"
 	},
 	"files": [],

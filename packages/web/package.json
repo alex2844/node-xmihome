@@ -1,6 +1,6 @@
 {
 	"name": "xmihome-web",
-	"version": "1.0.0",
+	"version": "1.1.1",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -9,7 +9,7 @@
 		"dev": "bun ./build.js"
 	},
 	"dependencies": {
-		"xmihome-devices": "file:../devices"
+		"xmihome-devices": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/web-bluetooth": "^0.0.21"

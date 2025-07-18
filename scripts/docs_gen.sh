@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROMPT_FILE="docs/GEMINI.md"
-OUTPUT_SCRIPT="scripts/docs_apply.sh"
-EXCLUDE_FILES_PATTERNS=("LICENSE" ".gitignore" "${PROMPT_FILE}" "${OUTPUT_SCRIPT}" "${0#./}")
-MODEL_ID="gemini-2.5-pro"
+readonly PROMPT_FILE="docs/GEMINI.md"
+readonly OUTPUT_SCRIPT="scripts/docs_apply.sh"
+readonly EXCLUDE_FILES_PATTERNS=("LICENSE" ".gitignore" "${PROMPT_FILE}" "${OUTPUT_SCRIPT}" "${0#./}")
+readonly MODEL_ID="gemini-2.5-pro"
 
 function error() {
 	echo "❌ Ошибка: $1" >&2
@@ -25,7 +25,6 @@ function check_deps() {
 }
 
 function list_project_files() {
-	# git ls-files -z | xargs -0 tar -czvf "./$(basename "${PWD}")-$(date +%Y_%m_%d_%H_%M_%S).tgz"
 	git ls-files -c --others --exclude-standard
 }
 

@@ -1,6 +1,6 @@
 {
 	"name": "xmihome",
-	"version": "1.0.0",
+	"version": "1.1.1",
 	"private": false,
 	"type": "module",
 	"exports": {
@@ -20,7 +20,7 @@
 	],
 	"dependencies": {
 		"mijia-io": "github:salamwaddah/mijia-io",
-		"xmihome-devices": "file:../devices"
+		"xmihome-devices": "workspace:*"
 	},
 	"optionalDependencies": {
 		"dbus-next": "github:dcodeIO/node-dbus-next"
