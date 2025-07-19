@@ -1,10 +1,9 @@
 import XiaomiMiHome from 'xmihome';
 import { CACHE_TTL } from 'xmihome/constants.js';
-
 /**
  * @import { Node, NodeAPI, NodeDef } from 'node-red'
  * @import { Request, Response } from 'express'
- * @import { Config as DeviceConfig } from 'xmihome/device.js'
+ * @import { default as Device, Config as DeviceConfig } from 'xmihome/device.js'
  */
 
 /**
@@ -60,6 +59,24 @@ export class ConfigNode {
 	 * @type {XiaomiMiHome}
 	 */
 	#client;
+
+	/**
+	 * Кеш созданных экземпляров устройств `xmihome/device`.
+	 * @type {Map<string, Device>}
+	 */
+	devices = new Map();
+
+	/**
+	 * Хранилище активных подписок на уведомления от устройств.
+	 * @type {Map<string, {device: Device, property: string, callback: Function}>}
+	 */
+	subscriptions = new Map();
+
+	/**
+	 * Таймеры для отложенного отключения от устройств.
+	 * @type {Map<string, NodeJS.Timeout>}
+	 */
+	disconnectTimers = new Map();
 
 	/** @type {string} */
 	endpoint;

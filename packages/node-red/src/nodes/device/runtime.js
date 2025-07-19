@@ -53,28 +53,10 @@ export class DeviceNode {
 	settings;
 
 	/**
-	 * Кеш созданных экземпляров устройств `xmihome/device`.
-	 * @type {Map<string, Device>}
-	 */
-	devices = new Map();
-
-	/**
 	 * Кеш последних полученных значений свойств для отображения в статусе.
 	 * @type {Map<string, String>}
 	 */
 	values = new Map();
-
-	/**
-	 * Хранилище активных подписок на уведомления от устройств.
-	 * @type {Map<string, {device: Device, property: string, callback: Function}>}
-	 */
-	subscriptions = new Map();
-
-	/**
-	 * Таймеры для отложенного отключения от устройств.
-	 * @type {Map<string, NodeJS.Timeout>}
-	 */
-	disconnectTimers = new Map();
 
 	/**
 	 * @param {NodeInstance} node
@@ -182,11 +164,11 @@ export class DeviceNode {
 	 * @param {string} deviceId
 	 */
 	#connected(deviceId) {
-		if (this.disconnectTimers.has(deviceId)) {
-			clearTimeout(this.disconnectTimers.get(deviceId));
-			this.disconnectTimers.delete(deviceId);
+		if (this.settings.disconnectTimers.has(deviceId)) {
+			clearTimeout(this.settings.disconnectTimers.get(deviceId));
+			this.settings.disconnectTimers.delete(deviceId);
 		}
-		const device = this.devices.get(deviceId);
+		const device = this.settings.devices.get(deviceId);
 		if (device) {
 			this.#node.status({ fill: 'green', shape: 'dot', text: `Connected: ${device.connectionType}` });
 			this.#node.send([null, {
@@ -207,10 +189,10 @@ export class DeviceNode {
 	 */
 	#disconnect(deviceId, ms = 200) {
 		const text = this.values.get(deviceId) || 'Disconnected';
-		if (this.devices.has(deviceId))
-			this.disconnectTimers.set(deviceId, setTimeout(() => {
+		if (this.settings.devices.has(deviceId))
+			this.settings.disconnectTimers.set(deviceId, setTimeout(() => {
 				this.#node.status({ fill: 'grey', shape: 'ring', text });
-				const device = this.devices.get(deviceId);
+				const device = this.settings.devices.get(deviceId);
 				if (device) {
 					this.#node.send([null, {
 						_msgid: this.#RED.util.generateId(),
@@ -222,7 +204,7 @@ export class DeviceNode {
 					}]);
 					this.#cleanup(deviceId);
 				}
-				this.disconnectTimers.delete(deviceId);
+				this.settings.disconnectTimers.delete(deviceId);
 			}, ms));
 	};
 
@@ -232,11 +214,11 @@ export class DeviceNode {
 	 * @param {string} _.reason
 	 */
 	#reconnecting(deviceId, { reason }) {
-		if (this.disconnectTimers.has(deviceId)) {
-			clearTimeout(this.disconnectTimers.get(deviceId));
-			this.disconnectTimers.delete(deviceId);
+		if (this.settings.disconnectTimers.has(deviceId)) {
+			clearTimeout(this.settings.disconnectTimers.get(deviceId));
+			this.settings.disconnectTimers.delete(deviceId);
 		}
-		const device = this.devices.get(deviceId);
+		const device = this.settings.devices.get(deviceId);
 		if (device) {
 			this.#node.status({ fill: 'yellow', shape: 'dot', text: `Reconnecting` });
 			this.#node.send([null, {
@@ -258,11 +240,11 @@ export class DeviceNode {
 	 * @param {string} _.error
 	 */
 	#reconnectFailed(deviceId, { attempts, error }) {
-		if (this.disconnectTimers.has(deviceId)) {
-			clearTimeout(this.disconnectTimers.get(deviceId));
-			this.disconnectTimers.delete(deviceId);
+		if (this.settings.disconnectTimers.has(deviceId)) {
+			clearTimeout(this.settings.disconnectTimers.get(deviceId));
+			this.settings.disconnectTimers.delete(deviceId);
 		}
-		const device = this.devices.get(deviceId);
+		const device = this.settings.devices.get(deviceId);
 		if (device) {
 			this.#node.status({ fill: 'red', shape: 'ring', text: `Reconnect failed` });
 			this.#node.send([null, {
@@ -282,7 +264,7 @@ export class DeviceNode {
 	 * @param {string} deviceId
 	 */
 	async #cleanup(deviceId) {
-		const device = this.devices.get(deviceId);
+		const device = this.settings.devices.get(deviceId);
 		if (!device)
 			return;
 		this.#node.debug(`Cleaning up and disconnecting device: ${deviceId}`);
@@ -292,7 +274,7 @@ export class DeviceNode {
 			this.#node.error(`Error during cleanup disconnect for ${deviceId}: ${err}`)
 		}
 		device.removeAllListeners();
-		this.devices.delete(deviceId);
+		this.settings.devices.delete(deviceId);
 		this.values.delete(deviceId);
 	};
 
@@ -311,17 +293,17 @@ export class DeviceNode {
 		const deviceConfig = this.getDeviceConfig(msg);
 		const deviceId = this.getDeviceId(deviceConfig);
 		try {
-			if (this.disconnectTimers.has(deviceId)) {
+			if (this.settings.disconnectTimers.has(deviceId)) {
 				this.#node.debug(`Cancelling pending disconnect for ${deviceId} due to new command.`);
-				clearTimeout(this.disconnectTimers.get(deviceId));
-				this.disconnectTimers.delete(deviceId);
+				clearTimeout(this.settings.disconnectTimers.get(deviceId));
+				this.settings.disconnectTimers.delete(deviceId);
 			}
 			if (!['getProperties', 'getProperty', 'setProperty', 'subscribe', 'unsubscribe'].includes(this.#config.action))
 				throw new Error(`Invalid action specified: ${this.#config.action}`);
 			if ((this.#config.action !== 'getProperties') && !property)
 				throw new Error('Property name is missing (configure node or provide msg.property)');
-			if (this.devices.has(deviceId)) {
-				device = this.devices.get(deviceId);
+			if (this.settings.devices.has(deviceId)) {
+				device = this.settings.devices.get(deviceId);
 				this.#node.debug(`Using existing device instance for key: ${deviceId}`);
 			} else {
 				device = await this.client.getDevice(deviceConfig);
@@ -329,7 +311,7 @@ export class DeviceNode {
 				device.on('disconnect', this.#disconnect.bind(this, deviceId));
 				device.on('reconnecting', this.#reconnecting.bind(this, deviceId));
 				device.on('reconnect_failed', this.#reconnectFailed.bind(this, deviceId));
-				this.devices.set(deviceId, device);
+				this.settings.devices.set(deviceId, device);
 				this.#node.debug(`Created and stored new device instance for key: ${deviceId}`);
 			}
 			if (this.#config.action !== 'unsubscribe') {
@@ -362,7 +344,7 @@ export class DeviceNode {
 				case 'subscribe': {
 					this.#node.status({ fill: 'yellow', shape: 'dot', text: `Subscribing to ${formattedProperty}...` });
 					const subscriptionKey = `${deviceId}_${formattedProperty}`;
-					if (this.subscriptions.has(subscriptionKey)) {
+					if (this.settings.subscriptions.has(subscriptionKey)) {
 						this.#node.warn(`Already subscribed to ${property} for device ${deviceId}. Ignoring.`);
 						this.#node.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
 					} else {
@@ -376,7 +358,7 @@ export class DeviceNode {
 							}, null]);
 							this.#node.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
 						};
-						this.subscriptions.set(subscriptionKey, { device, property, callback });
+						this.settings.subscriptions.set(subscriptionKey, { device, property, callback });
 						await device.startNotify(property, callback);
 						this.#node.log(`Successfully subscribed to ${property} for device ${deviceId}`);
 						this.#node.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
@@ -386,10 +368,10 @@ export class DeviceNode {
 				case 'unsubscribe': {
 					this.#node.status({ fill: 'blue', shape: 'dot', text: `Unsubscribing from ${formattedProperty}...` });
 					const subscriptionKey = `${deviceId}_${formattedProperty}`;
-					if (this.subscriptions.has(subscriptionKey)) {
-						const subscription = this.subscriptions.get(subscriptionKey);
+					if (this.settings.subscriptions.has(subscriptionKey)) {
+						const subscription = this.settings.subscriptions.get(subscriptionKey);
 						await subscription.device.stopNotify(subscription.property);
-						this.subscriptions.delete(subscriptionKey);
+						this.settings.subscriptions.delete(subscriptionKey);
 						this.#node.log(`Successfully unsubscribed from ${property} for device ${deviceId}`);
 						this.#node.status({ fill: 'grey', shape: 'ring', text: `Unsubscribed` });
 					} else {
@@ -415,8 +397,11 @@ export class DeviceNode {
 					}
 				}]);
 		} finally {
-			if (device && (this.#config.action !== 'subscribe'))
-				this.#disconnect(deviceId, ((this.#config.action === 'unsubscribe') ? 0 : 30_000));
+			if (device && (this.#config.action !== 'subscribe')) {
+				const deviceHasSubscriptions = [...this.settings.subscriptions.keys()].some(key => key.startsWith(deviceId));
+				if (!deviceHasSubscriptions)
+					this.#disconnect(deviceId, ((this.#config.action === 'unsubscribe') ? 0 : 30_000));
+			}
 		}
 		done(result);
 	};
@@ -428,10 +413,10 @@ export class DeviceNode {
 	async #close(removed, done) {
 		const cleanupPromises = [];
 		this.#node.debug(`Node closing, cleaning up all active connections and subscriptions... (removed: ${!!removed})`);
-		for (const timerId of this.disconnectTimers.values()) {
+		for (const timerId of this.settings.disconnectTimers.values()) {
 			clearTimeout(timerId);
 		}
-		for (const [key, device] of this.devices.entries()) {
+		for (const [key, device] of this.settings.devices.entries()) {
 			this.#node.debug(`Disconnecting device instance for key: ${key}`);
 			cleanupPromises.push(
 				device.disconnect().catch(err => this.#node.error(`Error during cleanup disconnect for ${key}: ${err}`))
@@ -443,9 +428,9 @@ export class DeviceNode {
 		} catch (err) {
 			this.#node.error('Error during connection cleanup on node close.');
 		}
-		this.disconnectTimers.clear();
-		this.subscriptions.clear();
-		this.devices.clear();
+		this.settings.disconnectTimers.clear();
+		this.settings.subscriptions.clear();
+		this.settings.devices.clear();
 		this.values.clear();
 		this.#node.status({});
 		done();
