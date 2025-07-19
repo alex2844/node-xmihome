@@ -182,25 +182,32 @@ export default class Device extends EventEmitter {
 			throw new Error('Device not found');
 		}
 		client?.log('debug', `Device.create called for:`, device);
+		let instance;
 		const model = this.findModel(device);
 		if (model) {
 			client?.log('info', `Using specific device class "${model.name}" for model ${device.model || device.name}`);
-			return new model(device, client);
-		}
-		if (device.model) {
+			instance = new model(device, client);
+		} else if (device.model) {
 			const spec = await Miot.findModel(device.model).catch(() => {});
 			if (spec) {
 				client?.log('info', `Using generic MIoT spec definition for model ${device.model}`);
 				client?.log('debug', `MIoT Spec details:`, spec);
-				return new (class extends Device {
+				instance = new (class extends Device {
 					static name = spec.name;
 					static spec = `https://home.miot-spec.com/spec?type=${spec.type}`;
 					properties = spec.properties;
 				})(device, client);
 			}
 		}
-		client?.log('info', `Using base Device class for model ${device.model || device.name}`);
-		return new this(device, client);
+		if (!instance) {
+			client?.log('info', `Using base Device class for model ${device.model || device.name}`);
+			instance = new this(device, client);
+		}
+		if (instance.properties)
+			for (const key in instance.properties) {
+				instance.properties[key].key = key;
+			}
+		return instance;
 	};
 
 	/**
@@ -295,10 +302,6 @@ export default class Device extends EventEmitter {
 			if (!this.config.model)
 				throw new Error('Model value not passed');
 		}
-		if (this.properties)
-			for (const key in this.properties) {
-				this.properties[key].key = key;
-			}
 		this.on('external_disconnect', this.#handleExternalDisconnect);
 	};
 
