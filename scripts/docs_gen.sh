@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly PROMPT_FILE="docs/GEMINI.md"
+readonly PROMPT_FILE="docs/prompts/docs.md"
 readonly OUTPUT_SCRIPT="scripts/docs_apply.sh"
 readonly EXCLUDE_FILES_PATTERNS=("LICENSE" ".gitignore" "${PROMPT_FILE}" "${OUTPUT_SCRIPT}" "${0#./}")
 readonly MODEL_ID="gemini-2.5-pro"
