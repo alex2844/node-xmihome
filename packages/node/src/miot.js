@@ -20,24 +20,36 @@ export default class Miot {
 		const specResponse = await fetch(`https://miot-spec.org/miot-spec-v2/instance?type=${instance.type}`);
 		const /** @type {{ type: string, description: string, services: any[] }} */ spec = await specResponse.json();
 		const properties = {};
-		for (const s of /** @type {{ iid: number, type: string, description: string, properties: any[] }[]} */ (spec.services).slice(1)) {
+		const actions = {};
+		for (const s of /** @type {{ iid: number, type: string, description: string, properties?: any[], actions?: any[] }[]} */ (spec.services).slice(1)) {
 			const skp = s.type.split(':');
-			if (skp[1] === 'miot-spec-v2')
-				for (const p of /** @type {{ iid: number, type: string, description: string, format: string, access: any[] }[]} */ (s.properties)) {
-					const pkp = p.type.split(':');
-					if (p.access.length)
-						properties[`${skp[3]}_${pkp[3]}`] = {
+			if (skp[1] === 'miot-spec-v2') {
+				if (s.properties)
+					for (const p of /** @type {{ iid: number, type: string, description: string, format: string, access: any[] }[]} */ (s.properties)) {
+						const pkp = p.type.split(':');
+						if (p.access.length)
+							properties[`${skp[3]}_${pkp[3]}`] = {
+								siid: s.iid,
+								piid: p.iid,
+								format: p.format,
+								access: p.access
+							};
+					}
+				if (s.actions)
+					for (const a of /** @type {{ iid: number, type: string, in: any[] }[]} */ (s.actions)) {
+						const akp = a.type.split(':');
+						actions[`${skp[3]}_${akp[3]}`] = {
 							siid: s.iid,
-							piid: p.iid,
-							format: p.format,
-							access: p.access
+							aiid: a.iid,
+							params: a.in
 						};
-				}
+					}
+			}
 		}
 		return {
 			name: spec.description,
 			type: spec.type,
-			properties
+			properties, actions
 		};
 	};
 

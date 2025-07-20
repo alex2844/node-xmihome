@@ -24,6 +24,7 @@
 			"actionGetAll": "Get Properties",
 			"actionGet": "Get Property",
 			"actionSet": "Set Property",
+			"actionCall": "Call Action",
 			"actionSubscribe": "Subscribe to Property",
 			"actionUnsubscribe": "Unsubscribe from Property",
 			"property": "Property",

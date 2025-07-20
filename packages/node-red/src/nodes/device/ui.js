@@ -173,7 +173,7 @@ function onchangedevice(event) {
 function onchangeaction(event) {
 	const value = event.target.value;
 	$('#node-config-row-property').toggle(value !== 'getProperties');
-	$('#node-config-row-value').toggle(value === 'setProperty');
+	$('#node-config-row-value').toggle((value === 'setProperty') || (value === 'callAction'));
 };
 
 function onchangeproperty(event) {

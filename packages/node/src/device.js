@@ -48,6 +48,15 @@ import {
  */
 
 /**
+ * @typedef {{
+ *   siid: number;
+ *   aiid: number;
+ *   params?: any[];
+ *   key?: string;
+ * }} Action
+ */
+
+/**
  * @typedef {object} UuidMapping
  * @property {Object<string, string>} services - Карта полных UUID сервисов в их 16-битные псевдонимы.
  * @property {Object<string, string>} characteristics - Карта полных UUID характеристик в их 16-битные псевдонимы.
@@ -196,6 +205,7 @@ export default class Device extends EventEmitter {
 					static name = spec.name;
 					static spec = `https://home.miot-spec.com/spec?type=${spec.type}`;
 					properties = spec.properties;
+					actions = spec.actions;
 				})(device, client);
 			}
 		}
@@ -207,6 +217,10 @@ export default class Device extends EventEmitter {
 			for (const key in instance.properties) {
 				instance.properties[key].key = key;
 			}
+		if (instance.actions)
+			for (const key in instance.actions) {
+				instance.actions[key].key = key;
+			}
 		return instance;
 	};
 
@@ -215,6 +229,12 @@ export default class Device extends EventEmitter {
 	 * @type {Object.<string, Property>}
 	 */
 	properties = {};
+
+	/**
+	 * Описание действий устройства.
+	 * @type {Object.<string, Action>}
+	 */
+	actions = {};
 
 	/**
 	 * Тип подключения устройства.
@@ -697,6 +717,48 @@ export default class Device extends EventEmitter {
 			delete this.notify[prop.key];
 		}
 		this.client.log('debug', `Notifications stopped successfully for '${prop.key}'`);
+	};
+
+	/**
+	 * Вызывает действие на устройстве.
+	 * @param {string|Action} action Ключ действия или объект действия.
+	 * @param {any[]} [params] Массив входных параметров для действия.
+	 * @returns {Promise<object>} Результат выполнения действия.
+	 */
+	async callAction(action, params) {
+		if (typeof action === 'string')
+			action = this.actions[action];
+		if (!action)
+			throw new Error('Action not found');
+		if (!params)
+			params = action.params || [];
+		this.client.log('debug', `Calling action for "${this.getName()}" via ${this.connectionType}`, action, params);
+		try {
+			const actionParams = {
+				siid: action.siid,
+				aiid: action.aiid,
+				in: params
+			};
+
+			let result;
+			if (this.connectionType === 'miio') {
+				result = await this.device.call('action', actionParams);
+			} else if (this.connectionType === 'cloud') {
+				result = await this.client.miot.request(`/home/rpc/${this.config.id}`, {
+					method: 'action',
+					params: actionParams
+				}).then(({ result }) => result);
+			} else {
+				throw new Error(`Actions are not supported for ${this.connectionType} connection type.`);
+			}
+
+			this.client.log('info', `Action '${action.key}' called successfully for "${this.getName()}"`);
+			return result;
+
+		} catch (err) {
+			this.client.log('error', `Failed to call action for "${this.getName()}":`, err);
+			throw err;
+		}
 	};
 
 	/**

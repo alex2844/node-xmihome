@@ -11,7 +11,7 @@ import Device from 'xmihome/device.js';
  *   settings: string;
  *   device: string;
  *   deviceType: 'json'|'msg';
- *   action: 'getProperties'|'getProperty'|'setProperty'|'subscribe'|'unsubscribe';
+ *   action: 'getProperties'|'getProperty'|'setProperty'|'callAction'|'subscribe'|'unsubscribe';
  *   property: string;
  *   propertyType: 'str'|'msg'|'flow'|'global'|'json';
  *   value: string;
@@ -298,7 +298,7 @@ export class DeviceNode {
 				clearTimeout(this.settings.disconnectTimers.get(deviceId));
 				this.settings.disconnectTimers.delete(deviceId);
 			}
-			if (!['getProperties', 'getProperty', 'setProperty', 'subscribe', 'unsubscribe'].includes(this.#config.action))
+			if (!['getProperties', 'getProperty', 'setProperty', 'callAction', 'subscribe', 'unsubscribe'].includes(this.#config.action))
 				throw new Error(`Invalid action specified: ${this.#config.action}`);
 			if ((this.#config.action !== 'getProperties') && !property)
 				throw new Error('Property name is missing (configure node or provide msg.property)');
@@ -337,7 +337,21 @@ export class DeviceNode {
 					this.#node.status({ fill: 'blue', shape: 'dot', text: `Setting ${formattedProperty}...` });
 					this.#node.debug(`Value to set for ${property}: ${JSON.stringify(value)}`);
 					await device.setProperty(property, value);
+					msg.payload = { property, value };
+					msg.topic = topic || msg.topic || `property/${property}`;
+					send([msg, null]);
 					this.#node.log(`Property ${property} set to ${JSON.stringify(value)} successfully.`);
+					this.#node.status({ fill: 'green', shape: 'dot', text: 'Done' });
+					break;
+				};
+				case 'callAction': {
+					this.#node.status({ fill: 'blue', shape: 'dot', text: `Calling ${formattedProperty}...` });
+					this.#node.debug(`Calling action ${property} with params: ${JSON.stringify(value)}`);
+					const result = await device.callAction(property, value);
+					msg.payload = result;
+					msg.topic = topic || msg.topic || `action/${property}`;
+					send([msg, null]);
+					this.#node.log(`Action ${property} called successfully.`);
 					this.#node.status({ fill: 'green', shape: 'dot', text: 'Done' });
 					break;
 				};
