@@ -182,7 +182,7 @@ main();
 [`packages/devices/src/devices/`](../../../devices/src/devices/),
 основываясь на примере существующих файлов (например, `deerma.humidifier.jsq2w.js`).
 3. **Определить статические свойства:** Заполните `static name`, `static models`,
-и `static properties` в соответствии со спецификацией вашего устройства.
+`static properties` и `static actions` в соответствии со спецификацией вашего устройства.
 4. **Отправить Pull Request:**  Если вы хотите поделиться своей работой с
 сообществом, отправьте Pull Request на GitHub репозиторий `xmihome` с вашим
 файлом определения устройства.

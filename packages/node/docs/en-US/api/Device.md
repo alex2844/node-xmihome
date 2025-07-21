@@ -108,6 +108,21 @@ Sets the value of a single property.
 
 - `Promise<void>`
 
+### `callAction(action, params)`
+
+Calls a specific action on the device. This is used for operations that don't fit the get/set property model, such as starting a cleaning cycle on a vacuum.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `action` | `string \| object` | The name of the action or the action definition object. |
+| `params` | `any[]` | (Optional) An array of parameters for the action. |
+
+**Returns:**
+
+- `Promise<any>`: A promise that resolves with the result of the action.
+
 ### `startNotify(prop, callback)`
 
 Subscribes to notifications for a property's value changes.

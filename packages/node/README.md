@@ -171,8 +171,8 @@ protocol or Bluetooth GATT services and characteristics that your device uses.
 2. **Create a device definition file:** Create a new `.js` file in the
 [`packages/devices/src/devices/`](../devices/src/devices) directory,
 based on the example of existing files (e.g., `deerma.humidifier.jsq2w.js`).
-3. **Define static properties:** Fill in `static name`, `static models`, and
-`static properties` according to your device's specification.
+3. **Define static properties:** Fill in `static name`, `static models`,
+`static properties`, and `static actions` according to your device's specification.
 4. **Submit a Pull Request:** If you want to share your work with the community,
 submit a Pull Request to the `xmihome` GitHub repository with your device
 definition file.

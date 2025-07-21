@@ -13,7 +13,7 @@ Xiaomi cloud, the local network (MiIO protocol), or Bluetooth LE.
 
 * **Three connection methods:** Cloud, MiIO (local), and Bluetooth LE.
 * **Automatic discovery:** Finds devices in the cloud and on your local network.
-* **Simple control:** Get and set device properties (on/off, temperature, humidity, etc.).
+* **Simple control:** Get/set device properties (on/off, temp, etc.) and call actions.
 * **Event subscription:** Receive real-time updates from devices.
 * **Full localization:** Interface available in Russian and English.
 * **Detailed help:** Built-in documentation for each node in the Node-RED "Help" panel.
@@ -37,4 +37,4 @@ Configures your Xiaomi credentials and default connection settings.
 * **`xmihome-devices` (Discovery):**
 Initiates the discovery process and returns a list of found devices.
 * **`xmihome-device` (Control):**
-Interacts with a single, specific device to get/set properties or subscribe to notifications.
+Interacts with a single device to get/set properties, call actions, or subscribe to notifications.

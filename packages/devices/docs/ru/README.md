@@ -17,6 +17,7 @@ Xiaomi Mi Home, позволяя управлять ими через основ
 | Название устройства | Модели | Документация |
 | --- | --- | --- |
 | Xiaomi Smart Humidifier 2 | `deerma.humidifier.jsq2w` | [Смотреть](./deerma.humidifier.jsq2w.md) |
+| ROIDMI EVE | `roidmi.vacuum.v60` | [Смотреть](./roidmi.vacuum.md) |
 
 ### Bluetooth устройства
 

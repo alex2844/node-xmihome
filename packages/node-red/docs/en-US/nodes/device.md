@@ -30,6 +30,9 @@ The property name is set in the "Property" field or via `msg.property`.
 - **Set Property**: Sets the value of a single property.
   - **Property**: The name of the property to change.
   - **Value**: The new value. Can be a string, number, boolean, or JSON object.
+- **Call Action**: Calls a specific action on the device (e.g., `start_sweep` for a vacuum).
+  - **Property**: The name of the action to call.
+  - **Value**: The parameters for the action, typically an array (e.g., `[]`).
 - **Subscribe to Property**: Subscribes to notifications for property changes.
 The node will send a message to the **first output** every time the device
 reports a new value. The connection to the device will be kept active.
@@ -40,17 +43,17 @@ reports a new value. The connection to the device will be kept active.
 - `msg.device` (object, optional): If set,
 overrides the device configuration in the node.
 - `msg.property` (string, optional): If set,
-overrides the property specified in the node.
-- `msg.payload` (any): Used as the "Value" for the "Set Property" action
-if the "Value" field in the node is configured to use `msg.payload`.
+overrides the property or action specified in the node.
+- `msg.payload` (any): Used as the "Value" for the "Set Property" or "Call Action"
+action if the "Value" field in the node is configured to use `msg.payload`.
 - `msg.topic` (string, optional): If set, overrides the topic for the outgoing message.
 
 ### Outputs
 
 1. **Result / Notifications**
-    - For `Get/Set` actions: Sends a single message with the result of the operation.
-    `msg.payload` contains the retrieved value or
-    is `undefined` on a successful set.
+    - For `Get/Set/Call` actions: Sends a single message with the result of the operation.
+    `msg.payload` contains the retrieved value, action result,
+    or is an object `{property, value}` on a successful set.
     - For `Subscribe`: Sends a message each time a notification is received.
     `msg.payload` contains the new property value.
 2. **Connection Events**
@@ -59,4 +62,3 @@ if the "Value" field in the node is configured to use `msg.payload`.
     - `msg.payload.event` can be:
     `connected`, `disconnected`, `reconnecting`, `reconnect_failed`, `error`.
     - `msg.topic` will be structured like `connection/...` or `error/...`.
-

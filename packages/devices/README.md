@@ -17,6 +17,7 @@ which typically uses a cloud-based or local network connection.
 | Device Name | Models | Documentation |
 | --- | --- | --- |
 | Xiaomi Smart Humidifier 2 | `deerma.humidifier.jsq2w` | [View](./docs/en-US/deerma.humidifier.jsq2w.md) |
+| ROIDMI EVE | `roidmi.vacuum.v60` | [View](./docs/en-US/roidmi.vacuum.md) |
 
 ### Bluetooth Devices
 
