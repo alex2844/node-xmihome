@@ -11,7 +11,7 @@ import Device from 'xmihome/device.js';
  *   settings: string;
  *   device: string;
  *   deviceType: 'json'|'msg';
- *   action: 'getProperties'|'getProperty'|'setProperty'|'callAction'|'subscribe'|'unsubscribe';
+ *   action: 'getProperties'|'getProperty'|'setProperty'|'callAction'|'callMethod'|'subscribe'|'unsubscribe';
  *   property: string;
  *   propertyType: 'str'|'msg'|'flow'|'global'|'json';
  *   value: string;
@@ -284,21 +284,21 @@ export class DeviceNode {
 	 * @param {(err?: Error) => void} done
 	 */
 	async #input(msg, send, done) {
-		let result, device;
+		let result, device, deviceConfig, deviceId;
 		this.#node.status({ fill: 'blue', shape: 'dot', text: 'Getting device...' });
 		const topic = this.#RED.util.evaluateNodeProperty(this.#config.topic, this.#config.topicType, this.#node, msg);
 		const value = this.#RED.util.evaluateNodeProperty(this.#config.value, this.#config.valueType, this.#node, msg);
 		const property = this.#RED.util.evaluateNodeProperty(this.#config.property, this.#config.propertyType, this.#node, msg);
 		const formattedProperty = this.formatPropertyForStatus(property);
-		const deviceConfig = this.getDeviceConfig(msg);
-		const deviceId = this.getDeviceId(deviceConfig);
 		try {
+			deviceConfig = this.getDeviceConfig(msg);
+			deviceId = this.getDeviceId(deviceConfig);
 			if (this.settings.disconnectTimers.has(deviceId)) {
 				this.#node.debug(`Cancelling pending disconnect for ${deviceId} due to new command.`);
 				clearTimeout(this.settings.disconnectTimers.get(deviceId));
 				this.settings.disconnectTimers.delete(deviceId);
 			}
-			if (!['getProperties', 'getProperty', 'setProperty', 'callAction', 'subscribe', 'unsubscribe'].includes(this.#config.action))
+			if (!['getProperties', 'getProperty', 'setProperty', 'callAction', 'callMethod', 'subscribe', 'unsubscribe'].includes(this.#config.action))
 				throw new Error(`Invalid action specified: ${this.#config.action}`);
 			if ((this.#config.action !== 'getProperties') && !property)
 				throw new Error('Property name is missing (configure node or provide msg.property)');
@@ -347,11 +347,25 @@ export class DeviceNode {
 				case 'callAction': {
 					this.#node.status({ fill: 'blue', shape: 'dot', text: `Calling ${formattedProperty}...` });
 					this.#node.debug(`Calling action ${property} with params: ${JSON.stringify(value)}`);
-					const result = await device.callAction(property, value);
-					msg.payload = result;
+					const payload = await device.callAction(property, value);
+					msg.payload = payload;
 					msg.topic = topic || msg.topic || `action/${property}`;
 					send([msg, null]);
 					this.#node.log(`Action ${property} called successfully.`);
+					this.#node.status({ fill: 'green', shape: 'dot', text: 'Done' });
+					break;
+				};
+				case 'callMethod': {
+					const params = Array.isArray(value) ? value : (!value ? [] : [value]);
+					this.#node.status({ fill: 'blue', shape: 'dot', text: `Calling ${formattedProperty}()...` });
+					this.#node.debug(`Calling method ${property} with params: ${JSON.stringify(params)}`);
+					if (typeof device[property] !== 'function')
+						throw new Error(`Device object does not have a method named "${property}"`);
+					const payload = await device[property](...params);
+					msg.payload = payload;
+					msg.topic = topic || msg.topic || `method/${property}`;
+					send([msg, null]);
+					this.#node.log(`Method ${property} called successfully.`);
 					this.#node.status({ fill: 'green', shape: 'dot', text: 'Done' });
 					break;
 				};

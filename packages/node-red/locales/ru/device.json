@@ -25,6 +25,7 @@
 			"actionGet": "Получить свойство",
 			"actionSet": "Установить свойство",
 			"actionCall": "Вызвать действие",
+			"actionCallMethod": "Вызвать метод",
 			"actionSubscribe": "Подписаться на свойство",
 			"actionUnsubscribe": "Отписаться от свойства",
 			"property": "Свойство",
