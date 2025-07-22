@@ -3,5 +3,6 @@ xmihome_bluetooth.conf
 docs_apply.sh
 dist
 .env
+.cred.json
 .dev
 *.tgz

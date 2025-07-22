@@ -2,18 +2,21 @@ const fs = require('fs');
 const path = require('path');
 
 const userDir = path.join(__dirname, '.dev');
+const credFile = path.join(__dirname, '.cred.json');
 const flowFile = path.join(userDir, 'flows.json');
-const credFile = path.join(userDir, 'flows_cred.json');
 const linkPath = path.join(__dirname, '.dev/lib/flows');
 const examplesPath = path.join(__dirname, 'examples');
+const flowCredFile = path.join(path.dirname(flowFile), `${path.basename(flowFile, '.json')}_cred.json`);
 let credentialsData = {};
 
 if (!fs.existsSync(path.dirname(linkPath)))
 	fs.mkdirSync(path.dirname(linkPath), { recursive: true });
 if (!fs.existsSync(linkPath))
 	fs.symlinkSync(examplesPath, linkPath, 'dir');
-if (fs.existsSync(credFile))
+if (fs.existsSync(credFile)) {
 	credentialsData = JSON.parse(fs.readFileSync(credFile, 'utf8'));
+	fs.copyFileSync(credFile, flowCredFile);
+}
 if (!fs.existsSync(flowFile)) {
 	const exampleFiles = fs.readdirSync(examplesPath).filter(file => file.endsWith('.json'));
 	const allNodes = [];
@@ -67,6 +70,22 @@ if (!fs.existsSync(flowFile)) {
 	}
 	fs.writeFileSync(flowFile, JSON.stringify(allNodes, null, '\t'));
 }
+
+function saveCredentialsOnExit() {
+	if (fs.existsSync(flowCredFile)) {
+		credentialsData = JSON.parse(fs.readFileSync(flowCredFile, 'utf8'));
+		fs.writeFileSync(credFile, JSON.stringify(credentialsData, null, '\t'));
+	}
+}
+
+process.on('SIGINT', () => {
+	saveCredentialsOnExit();
+	process.exit();
+});
+process.on('SIGTERM', () => {
+	saveCredentialsOnExit();
+	process.exit();
+});
 
 module.exports = {
 	userDir, flowFile,
