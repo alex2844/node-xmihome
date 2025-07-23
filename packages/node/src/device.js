@@ -739,22 +739,18 @@ export default class Device extends EventEmitter {
 				aiid: action.aiid,
 				in: params
 			};
-
 			let result;
-			if (this.connectionType === 'miio') {
+			if (this.connectionType === 'miio')
 				result = await this.device.call('action', actionParams);
-			} else if (this.connectionType === 'cloud') {
+			else if (this.connectionType === 'cloud') {
 				result = await this.client.miot.request(`/home/rpc/${this.config.id}`, {
 					method: 'action',
 					params: actionParams
 				}).then(({ result }) => result);
-			} else {
+			} else
 				throw new Error(`Actions are not supported for ${this.connectionType} connection type.`);
-			}
-
 			this.client.log('info', `Action '${action.key}' called successfully for "${this.getName()}"`);
 			return result;
-
 		} catch (err) {
 			this.client.log('error', `Failed to call action for "${this.getName()}":`, err);
 			throw err;
