@@ -48,19 +48,19 @@ export default class YunmiKettle extends Device {
 	 * Возможные значения свойства `action` (действие чайника).
 	 * @type {string[]}
 	 */
-	static PROP_ACTION = ['idle', 'heating', 'cooling', 'keeping_warm'];
+	static ACTION = ['idle', 'heating', 'cooling', 'keeping_warm'];
 
 	/**
 	 * Возможные значения свойства `keep_warm_type` (тип поддержания температуры).
 	 * @type {string[]}
 	 */
-	static PROP_KEEP_WARM_TYPE = ['boil_and_cool_down', 'heat_to_temperature'];
+	static KEEP_WARM_TYPE = ['boil_and_cool_down', 'heat_to_temperature'];
 
 	/**
 	 * Возможные значения свойства `mode` (режим работы чайника).
 	 * @type {object}
 	 */
-	static PROP_MODE = { 255: 'none', 1: 'boil', 2: 'keep_warm' };
+	static MODE = { 255: 'none', 1: 'boil', 2: 'keep_warm' };
 
 	/**
 	 * @typedef {Omit<Property, 'read'|'write'> & {
@@ -124,15 +124,15 @@ export default class YunmiKettle extends Device {
 			characteristic: '0000aa01-0000-1000-8000-00805f9b34fb',
 			access: ['read', 'write'],
 			read: buf => ({
-				type: YunmiKettle.PROP_KEEP_WARM_TYPE[buf.readUInt8(0)],
+				type: YunmiKettle.KEEP_WARM_TYPE[buf.readUInt8(0)],
 				temperature: buf.readUInt8(1)
 			}),
 			write: ({ temperature = 80, type = 'heat_to_temperature' } = {}) => {
 				if ((temperature < 40) || (temperature > 90))
 					throw new Error('Temperature must be between 40 and 90 degrees.');
-				const typeIndex = YunmiKettle.PROP_KEEP_WARM_TYPE.indexOf(type);
+				const typeIndex = YunmiKettle.KEEP_WARM_TYPE.indexOf(type);
 				if (typeIndex === -1)
-					throw new Error(`Invalid keep_warm_type: ${type}. Available: ${YunmiKettle.PROP_KEEP_WARM_TYPE.join(', ')}`);
+					throw new Error(`Invalid keep_warm_type: ${type}. Available: ${YunmiKettle.KEEP_WARM_TYPE.join(', ')}`);
 				const buf = Buffer.alloc(2);
 				buf.writeUInt8(typeIndex, 0);
 				buf.writeUInt8(temperature, 1);
@@ -168,11 +168,11 @@ export default class YunmiKettle extends Device {
 			characteristic: '0000aa02-0000-1000-8000-00805f9b34fb',
 			access: ['notify'],
 			notify: buf => ({
-				action: YunmiKettle.PROP_ACTION[buf.readUInt8(0)],
-				mode: YunmiKettle.PROP_MODE[buf.readUInt8(1)],
+				action: YunmiKettle.ACTION[buf.readUInt8(0)],
+				mode: YunmiKettle.MODE[buf.readUInt8(1)],
 				keep_warm_set_temperature: buf.readUInt8(4),
 				current_temperature: buf.readUInt8(5),
-				keep_warm_type: YunmiKettle.PROP_KEEP_WARM_TYPE[buf.readUInt8(6)],
+				keep_warm_type: YunmiKettle.KEEP_WARM_TYPE[buf.readUInt8(6)],
 				keep_warm_time: buf.readUInt16LE(7)
 			})
 		}
