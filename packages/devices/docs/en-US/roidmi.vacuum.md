@@ -25,6 +25,7 @@ Class for managing the ROIDMI EVE (roidmi.vacuum.v60) vacuum cleaner.
 | `start_sweep` | Start cleaning. | `2` / `1` |
 | `stop_sweep` | Stop/pause cleaning. | `2` / `2` |
 | `start_charge` | Send to dock for charging. | `3` / `1` |
+| `start_room_sweep` | Start cleaning specific rooms. | `14` / `1` |
 
 ## Methods
 

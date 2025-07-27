@@ -44,29 +44,6 @@ function process_file() {
 	echo
 }
 
-function generate_request_json() {
-	jq -n \
-		--arg prompt_b64 "$1" \
-		--arg context_b64 "$2" \
-		'{
-			"contents": [
-				{
-					"role": "user",
-					"parts": [
-						{
-							"inlineData": { "mimeType": "text/plain", "data": $prompt_b64 }
-						}, {
-							"inlineData": { "mimeType": "text/plain", "data": $context_b64 }
-						}
-					]
-				}
-			],
-			"generationConfig": {
-				"responseMimeType": "text/plain"
-			}
-		}'
-}
-
 function main() {
 	echo "🔍 Работаем в корне проекта: ${PWD}"
 
@@ -100,9 +77,30 @@ function main() {
 
 	local prompt_base64=$(base64 -w0 < "${PROMPT_FILE}")
 	local context_base64=$(base64 -w0 <<< "${project_context}")
-	local request_json=$(generate_request_json "${prompt_base64}" "${context_base64}")
-	local api_url="https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent?key=${GEMINI_API_KEY}"
+	local request_json
+	if ! request_json=$(jq -n \
+		--arg prompt_b64 "${prompt_base64}" \
+		--rawfile context_b64 <(echo -n "${context_base64}") \
+		'{
+			"contents": [
+				{
+					"role": "user",
+					"parts": [
+						{ "inlineData": { "mimeType": "text/plain", "data": $prompt_b64 } },
+						{ "inlineData": { "mimeType": "text/plain", "data": $context_b64 } }
+					]
+				}
+			],
+			"generationConfig": {
+				"responseMimeType": "text/plain"
+			}
+		}'
+	); then
+		error "Не удалось сгенерировать JSON для запроса с помощью jq."
+	fi
+	# echo "${request_json}" > request.json
 
+	local api_url="https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent?key=${GEMINI_API_KEY}"
 	local response
 	if ! response=$(curl -s -X POST -H "Content-Type: application/json" --data-binary @- "${api_url}" <<< "${request_json}" 2>&1); then
 		error "Запрос к Gemini API не удался. Ответ сервера:\n${response}"
