@@ -1,0 +1,50 @@
+name: Deploy Web to Pages
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - 'packages/web/**'
+      - 'packages/devices/src/**'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build
+        run: bun run build --workspace=xmihome-web
+      - name: Prepare static files for deployment
+        run: |
+          cp packages/web/index.html packages/web/dist/
+          cp packages/web/public/style.css packages/web/dist/
+          sed -i 's|./public/style.css|./style.css|' packages/web/dist/index.html
+          sed -i 's|./dist/bundle.js|./bundle.js|' packages/web/dist/index.html
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'packages/web/dist'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
