@@ -9,7 +9,7 @@
 		"build": "npm run build --workspaces --if-present",
 		"clean": "rm -rf ./packages/*/dist",
 		"publish": "./scripts/publish.sh",
-		"docs": "./scripts/docs_gen.sh"
+		"docs": "./scripts/docs.sh"
 	},
 	"files": [],
 	"workspaces": [
