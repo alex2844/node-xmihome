@@ -1,6 +1,6 @@
-# Mi Smart Kettle (yunmi.kettle.v2)
+# Mi Smart Kettle
 
-Класс для управления умным чайником Mi Smart Kettle (yunmi.kettle.v2).
+Класс для управления умным чайником Mi Smart Kettle.
 
 ## Модели
 

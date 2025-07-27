@@ -1,6 +1,6 @@
-# ROIDMI EVE (roidmi.vacuum.v60)
+# ROIDMI EVE
 
-Class for managing the ROIDMI EVE (roidmi.vacuum.v60) vacuum cleaner.
+Class for managing the ROIDMI EVE vacuum cleaner.
 
 ## Models
 
@@ -33,7 +33,7 @@ The device class provides additional methods for advanced interactions, such as 
 
 | Name | Description | Returns |
 |---|---|---|
-| `getRooms()` | Gets a list of rooms from the map metadata. | `Promise<Array<{id: number, name: string}>>` |
+| `getRooms()` | Gets a list of rooms and the map ID from the map metadata. | `Promise<{mapId: number, segments: {id: number, name: string}[]}>` |
 | `getMapImage()` | Generates an SVG image of the map. | `Promise<string>` |
 
 ## Constants

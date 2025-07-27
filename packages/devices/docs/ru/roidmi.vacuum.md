@@ -1,6 +1,6 @@
-# ROIDMI EVE (roidmi.vacuum.v60)
+# ROIDMI EVE
 
-Класс для управления пылесосом ROIDMI EVE (roidmi.vacuum.v60).
+Класс для управления пылесосом ROIDMI EVE.
 
 ## Модели
 
@@ -33,7 +33,7 @@
 
 | Имя | Описание | Возвращает |
 |---|---|---|
-| `getRooms()` | Получает список комнат из метаданных карты. | `Promise<Array<{id: number, name: string}>>` |
+| `getRooms()` | Получает список комнат и ID карты из метаданных. | `Promise<{mapId: number, segments: {id: number, name: string}[]}>` |
 | `getMapImage()` | Генерирует SVG-изображение карты. | `Promise<string>` |
 
 ## Константы

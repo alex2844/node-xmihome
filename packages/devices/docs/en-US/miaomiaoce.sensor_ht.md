@@ -1,6 +1,6 @@
-# Temperature Humidity Sensor (miaomiaoce.sensor_ht.t8)
+# Temperature Humidity Sensor
 
-Class for managing the Miaomiaoce Sensor HT.T8 temperature and humidity sensor.
+Class for managing the Miaomiaoce Sensor HT temperature and humidity sensor.
 
 ## Models
 

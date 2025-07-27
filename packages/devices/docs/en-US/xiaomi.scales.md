@@ -1,4 +1,4 @@
-# Xiaomi Body Composition Scale (xiaomi.scales.ms115)
+# Xiaomi Body Composition Scale
 
 Class for managing the Xiaomi Body Composition Scale.
 

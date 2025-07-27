@@ -1,6 +1,6 @@
-# Mi Smart Kettle (yunmi.kettle.v2)
+# Mi Smart Kettle
 
-Class for managing the Mi Smart Kettle (yunmi.kettle.v2).
+Class for managing the Mi Smart Kettle.
 
 ## Models
 

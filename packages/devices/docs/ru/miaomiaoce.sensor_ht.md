@@ -1,6 +1,6 @@
-# Temperature Humidity Sensor (miaomiaoce.sensor_ht.t8)
+# Temperature Humidity Sensor
 
-Класс для управления датчиком температуры и влажности Miaomiaoce Sensor HT.T8.
+Класс для управления датчиком температуры и влажности Miaomiaoce Sensor HT.
 
 ## Модели
 

@@ -1,4 +1,4 @@
-# Умные весы Xiaomi Body Composition Scale (xiaomi.scales.ms115)
+# Умные весы Xiaomi Body Composition Scale
 
 Класс для управления умными весами Xiaomi Body Composition Scale.
 

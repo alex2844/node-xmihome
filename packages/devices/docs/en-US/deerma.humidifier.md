@@ -1,4 +1,4 @@
-# Xiaomi Smart Humidifier 2 (deerma.humidifier.jsq2w)
+# Xiaomi Smart Humidifier 2
 
 Class for managing the Xiaomi Smart Humidifier 2.
 
