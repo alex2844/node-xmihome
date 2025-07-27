@@ -1,4 +1,4 @@
-import MiaomiaoceSensor from './devices/miaomiaoce.sensor_ht.t8.js';
+import MiaomiaoceSensor from './devices/miaomiaoce.sensor_ht.js';
 import YunmiKettle from './devices/yunmi.kettle.js';
 import XiaomiScales from './devices/xiaomi.scales.js';
 

@@ -16,7 +16,7 @@ which typically uses a cloud-based or local network connection.
 
 | Device Name | Models | Documentation |
 | --- | --- | --- |
-| Xiaomi Smart Humidifier 2 | `deerma.humidifier.jsq2w` | [View](./docs/en-US/deerma.humidifier.jsq2w.md) |
+| Xiaomi Smart Humidifier 2 | `deerma.humidifier.jsq2w` | [View](./docs/en-US/deerma.humidifier.md) |
 | ROIDMI EVE | `roidmi.vacuum.v60` | [View](./docs/en-US/roidmi.vacuum.md) |
 
 ### Bluetooth Devices
@@ -25,6 +25,6 @@ These devices are controlled directly via Bluetooth Low Energy (BLE).
 
 | Device Name | Models | Documentation |
 | --- | --- | --- |
-| Temperature Humidity Sensor | `miaomiaoce.sensor_ht.t8` | [View](./docs/en-US/miaomiaoce.sensor_ht.t8.md) |
+| Temperature Humidity Sensor | `miaomiaoce.sensor_ht.t8` | [View](./docs/en-US/miaomiaoce.sensor_ht.md) |
 | Xiaomi Body Composition Scale | `xiaomi.scales.ms115` | [View](./docs/en-US/xiaomi.scales.md) |
 | Mi Smart Kettle | `yunmi.kettle.v2` | [View](./docs/en-US/yunmi.kettle.md) |
