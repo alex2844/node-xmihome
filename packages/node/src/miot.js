@@ -41,7 +41,7 @@ export default class Miot {
 						actions[`${skp[3]}_${akp[3]}`] = {
 							siid: s.iid,
 							aiid: a.iid,
-							params: a.in
+							in: a.in
 						};
 					}
 			}

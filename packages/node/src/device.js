@@ -51,7 +51,7 @@ import {
  * @typedef {{
  *   siid: number;
  *   aiid: number;
- *   params?: any[];
+ *   in?: any[];
  *   key?: string;
  * }} Action
  */
@@ -722,30 +722,31 @@ export default class Device extends EventEmitter {
 	/**
 	 * Вызывает действие на устройстве.
 	 * @param {string|Action} action Ключ действия или объект действия.
-	 * @param {any[]} [params] Массив входных параметров для действия.
+	 * @param {any[]} [value] Массив входных параметров для действия.
 	 * @returns {Promise<object>} Результат выполнения действия.
 	 */
-	async callAction(action, params) {
+	async callAction(action, value) {
 		if (typeof action === 'string')
 			action = this.actions[action];
 		if (!action)
 			throw new Error('Action not found');
-		if (!params)
-			params = action.params || [];
-		this.client.log('debug', `Calling action for "${this.getName()}" via ${this.connectionType}`, action, params);
+		if (!value)
+			value = action.in || [];
+		this.client.log('debug', `Calling action for "${this.getName()}" via ${this.connectionType}`, action, value);
 		try {
-			const actionParams = {
+			const params = {
+				did: this.config.id,
 				siid: action.siid,
 				aiid: action.aiid,
-				in: params
+				in: value
 			};
 			let result;
 			if (this.connectionType === 'miio')
-				result = await this.device.call('action', actionParams);
+				result = await this.device.call('action', params);
 			else if (this.connectionType === 'cloud') {
-				result = await this.client.miot.request(`/home/rpc/${this.config.id}`, {
+				result = await this.client.miot.request(`/miotspec/action`, {
 					method: 'action',
-					params: actionParams
+					params
 				}).then(({ result }) => result);
 			} else
 				throw new Error(`Actions are not supported for ${this.connectionType} connection type.`);

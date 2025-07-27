@@ -136,8 +136,8 @@ export default class RoidmiVacuum extends Device {
 	actions = {
 		'start_sweep': { siid: 2, aiid: 1 },
 		'stop_sweep': { siid: 2, aiid: 2 },
-		// 'start_room_sweep': { siid: 2, aiid: 3 }, // Начать уборку в комнате. (TODO: не работает)
-		'start_charge': { siid: 3, aiid: 1 }
+		'start_charge': { siid: 3, aiid: 1 },
+		'start_room_sweep': { siid: 14, aiid: 1 }
 	};
 
 	/**
@@ -240,24 +240,24 @@ export default class RoidmiVacuum extends Device {
 
 	/**
 	 * Получает список комнат из метаданных карты.
-	 * @returns {Promise<Array<{id: number, name: string}>>} Массив объектов комнат.
+	 * @returns {Promise<{mapId: number, segments: {id: number, name: string}[]}>}
 	 */
 	async getRooms() {
+		const segments = [];
 		this.client.log('info', 'Getting rooms from parsed map file...');
 		const { metaData } = await this.#loadMapData();
 		this.client.log('debug', 'Parsed map metadata:', metaData);
+		const mapId = metaData.mapId;
 		const roomList = metaData.autoAreaValue;
 		if (Array.isArray(roomList)) {
-			const rooms = roomList.map(room => ({
+			roomList.forEach(room => segments.push({
 				id: parseInt(room.id, 10),
 				name: room.name
 			}));
-			this.client.log('info', `Successfully parsed ${rooms.length} rooms.`);
-			return rooms;
-		} else {
+			this.client.log('info', `Successfully parsed ${segments.length} rooms.`);
+		} else
 			this.client.log('warn', 'Found JSON, but "autoAreaValue" is not a valid array.');
-			return [];
-		}
+		return { mapId, segments };
 	};
 
 	/**
