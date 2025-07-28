@@ -21,10 +21,10 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
       - name: Publish to NPM
-        if: ${{ env.NODE_AUTH_TOKEN != '' }}
+        if: ${{ env.NPM_CONFIG_TOKEN != '' }}
         run: bun run publish ${{ env.VERSION }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
