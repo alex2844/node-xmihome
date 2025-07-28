@@ -1,6 +1,6 @@
 {
 	"name": "xmihome",
-	"version": "1.1.2",
+	"version": "0.0.0",
 	"private": false,
 	"type": "module",
 	"description": "The core library for interacting with Xiaomi Mi Home devices via Cloud, MiIO, and Bluetooth.",
