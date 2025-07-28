@@ -27,9 +27,18 @@ jobs:
         run: bun run publish ${{ env.VERSION }}
         env:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Generate release notes
+        id: generate_notes
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~ 2>/dev/null || echo "")
+          echo "PREVIOUS_TAG=${PREVIOUS_TAG}" >> $GITHUB_ENV
+          gh release view ${{ github.ref_name }} --json body --jq .body > RELEASE_NOTES.md || \
+          gh release create ${{ github.ref_name }} --generate-notes --notes-start-tag ${PREVIOUS_TAG} --output RELEASE_NOTES.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref }}
           name: Release ${{ env.VERSION }}
-          generate_release_notes: true
+          body_path: RELEASE_NOTES.md
