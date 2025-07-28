@@ -27,13 +27,21 @@ jobs:
         run: bun run publish ${{ env.VERSION }}
         env:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Generate release notes
+      - name: Generate release notes via API
         id: generate_notes
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~ 2>/dev/null || echo "")
-          echo "PREVIOUS_TAG=${PREVIOUS_TAG}" >> $GITHUB_ENV
-          gh release view ${{ github.ref_name }} --json body --jq .body > RELEASE_NOTES.md || \
-          gh release create ${{ github.ref_name }} --generate-notes --notes-start-tag ${PREVIOUS_TAG} --output RELEASE_NOTES.md
+          echo "repository: ${{ github.repository }}"
+          echo "ref_name: ${{ github.ref_name }}"
+          echo "previous_tag_name: ${PREVIOUS_TAG}"
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${{ github.repository }}/releases/generate-notes \
+            -f tag_name='${{ github.ref_name }}' \
+            -f previous_tag_name="${PREVIOUS_TAG}" \
+            --jq '.body' > RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create GitHub Release
