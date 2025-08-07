@@ -34,6 +34,8 @@ jobs:
           release-count: 0
           skip-git-pull: "true"
           skip-bump: "true" 
+          skip-commit: "true"
+          skip-tag: "true"
           skip-on-empty: "false"
           output-file: "false"
       - name: Create GitHub Release
