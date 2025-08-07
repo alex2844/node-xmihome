@@ -51,8 +51,10 @@ jobs:
           skip-bump: "true" 
           skip-commit: "true"
           skip-tag: "true"
+          skip-on-empty: "false"
           output-file: "false"
           config-file-path: './changelog.config.cjs'
+          release-count: 0
       - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
