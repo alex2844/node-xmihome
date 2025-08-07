@@ -30,7 +30,17 @@ jobs:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Create custom changelog config
         run: |
-          echo "module.exports = { types: [ { type: 'feat', section: '🚀 Новые возможности' }, { type: 'fix', section: '🐛 Исправления' }, { type: 'ci', section: '⚙️ CI/CD' }, { type: 'chore', section: '🔧 Прочее' } ] };" > changelog.config.js
+          cat <<'EOF' > changelog.config.cjs
+          'use strict';
+          module.exports = {
+            types: [
+              { "type": "feat", "section": "🚀 Новые возможности" },
+              { "type": "fix", "section": "🐛 Исправления" },
+              { "type": "ci", "section": "⚙️ CI/CD" },
+              { "type": "chore", "section": "🔧 Прочее" }
+            ]
+          };
+          EOF
       - name: Generate changelog
         id: changelog
         uses: TriPSs/conventional-changelog-action@v5
@@ -42,7 +52,7 @@ jobs:
           skip-commit: "true"
           skip-tag: "true"
           output-file: "false"
-          config-file-path: './changelog.config.js'
+          config-file-path: './changelog.config.cjs'
       - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
