@@ -28,33 +28,13 @@ jobs:
         run: bun run publish ${{ env.VERSION }}
         env:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Create custom changelog config
+      - name: Generate changelog body
+        id: changelog_generator
         run: |
-          cat <<'EOF' > changelog.config.cjs
-          'use strict';
-          module.exports = {
-            types: [
-              { "type": "feat", "section": "🚀 Новые возможности" },
-              { "type": "fix", "section": "🐛 Исправления" },
-              { "type": "ci", "section": "⚙️ CI/CD" },
-              { "type": "chore", "section": "🔧 Прочее" }
-            ]
-          };
-          EOF
-      - name: Generate changelog
-        id: changelog
-        uses: TriPSs/conventional-changelog-action@v5
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          git-branch: 'main'
-          skip-git-pull: "true"
-          skip-bump: "true" 
-          skip-commit: "true"
-          skip-tag: "true"
-          skip-on-empty: "false"
-          output-file: "false"
-          config-file-path: './changelog.config.cjs'
-          release-count: 0
+          npm install -g conventional-changelog-cli
+          conventional-changelog -p angular -r 1 > RELEASE_NOTES.md
+          echo "Generated changelog:"
+          cat RELEASE_NOTES.md
       - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
@@ -62,4 +42,4 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref_name }}
-          body: ${{ steps.changelog.outputs.clean_changelog }}
+          body_path: RELEASE_NOTES.md
