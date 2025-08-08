@@ -51,24 +51,3 @@ as it correctly handles the workspace dependencies for this project.
     ```bash
     bun run test
     ```
-
-## Publishing
-
-This project uses a synchronized versioning model.
-Publishing is handled by a custom script
-that ensures all packages have the same version.
-
-### Publishing Steps
-
-1. **Set the version:**
-    Manually update the `version` field in the root
-    `package.json` file to the desired new version.
-
-2. **Run the publish script:**
-    This command will update the version in all sub-packages to match
-    the root `package.json`, and then publish all public packages to the npm registry.
-
-    ```bash
-    bun run publish
-    ```
-

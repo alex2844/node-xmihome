@@ -30,11 +30,9 @@ jobs:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Generate changelog body
         id: changelog_generator
-        run: |
-          npm install -g conventional-changelog-cli
-          conventional-changelog -p angular -r 1 > RELEASE_NOTES.md
-          echo "Generated changelog:"
-          cat RELEASE_NOTES.md
+        run: ./scripts/changelog.sh -o RELEASE_NOTES.md -t ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
