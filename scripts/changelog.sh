@@ -66,9 +66,17 @@ function main() {
 	fi
 
 	echo "🔍 Определение репозитория..."
-	local repo=$(git remote get-url origin | sed -n 's/.*github.com[:\/]\([^.]*\)\.git/\1/p')
-	[[ -z "$repo" ]] && error "Не удалось определить репозиторий из 'git remote get-url origin'."
-	echo "   - ✅ Репозиторий: ${repo}"
+	local repo
+	if [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
+		repo="${GITHUB_REPOSITORY}"
+		echo "   - ✅ Репозиторий найден из переменной окружения GITHUB_REPOSITORY: ${repo}"
+	else
+		repo=$(git remote get-url origin | sed -n 's/.*github.com[:\/]\([^.]*\)\.git/\1/p')
+		if [[ -z "$repo" ]]; then
+			error "Не удалось определить репозиторий из 'git remote'. Убедитесь, что remote 'origin' настроен правильно."
+		fi
+		echo "   - ✅ Репозиторий определен из git remote: ${repo}"
+	fi
 
 	echo "🔍 Определение диапазона тегов..."
 	local target_tag
