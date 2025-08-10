@@ -26,6 +26,41 @@ function check_deps() {
 	fi
 }
 
+function deduplicate_and_format_commits() {
+	local all_commits="$1"
+	local formatted_commits=""
+	declare -A seen_hashes
+	declare -A seen_messages
+	declare -A github_authors
+
+	while IFS='|' read -r hash message author; do
+		[[ -z "${hash}" ]] && continue
+		if [[ "${author}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+			github_authors["${hash}"]="([${author}](https://github.com/${author}))"
+		fi
+	done <<< "${all_commits}"
+
+	while IFS='|' read -r hash message author; do
+		[[ -z "${hash}" ]] && continue
+		if [[ -n "${seen_hashes[${hash}]:-}" ]] || [[ -n "${seen_messages[${message}]:-}" ]]; then
+			continue
+		fi
+		seen_hashes["${hash}"]=1
+		seen_messages["${message}"]=1
+
+		local author_info
+		if [[ -n "${github_authors[${hash}]:-}" ]]; then
+			author_info="${github_authors[${hash}]}"
+		else
+			author_info="(${author})"
+		fi
+
+		formatted_commits+="* ${message} ${author_info}"$'\n'
+	done <<< "${all_commits}"
+
+	echo "${formatted_commits}"
+}
+
 function get_commits() {
 	local include_pattern="$1"
 	local exclude_pattern="${2:-}"
@@ -35,6 +70,37 @@ function get_commits() {
 		commits=$(echo "${commits}" | grep -E -v "${exclude_pattern}" || true)
 	fi
 	[[ -n "${commits}" ]] && echo "${commits}"
+}
+
+function get_github_commits() {
+	local repo="$1"
+	local token="$2"
+	local from_ref="$3"
+	local to_ref="$4"
+
+	local response_body=$(curl -s \
+		-H "Accept: application/vnd.github.v3+json" \
+		-H "Authorization: Bearer ${token}" \
+		"https://api.github.com/repos/${repo}/compare/${from_ref}...${to_ref}"
+	)
+
+	if echo "${response_body}" | jq -e '.message' > /dev/null; then
+		local error_msg=$(echo "${response_body}" | jq -r '.message')
+		if [[ "${error_msg}" == "Not Found" ]]; then
+			echo "⚠️  Предупреждение: Не удалось получить данные через GitHub API. Возможно, один из тегов не существует в удаленном репозитории." >&2
+			return 1
+		else
+			error "API GitHub вернул ошибку: ${error_msg}"
+		fi
+	fi
+
+	echo "${response_body}" | jq -r '.commits[] | .sha[0:7] + "|" + (.commit.message | split("\n")[0]) + "|" + .author.login'
+}
+
+function get_local_commits() {
+	local from_ref="$1"
+	local to_ref="$2"
+	git log --no-merges --pretty=format:"%h|%s|%an" "${from_ref}".."${to_ref}" 2>/dev/null || true
 }
 
 function main() {
@@ -62,7 +128,7 @@ function main() {
 		token=$(gh auth token)
 		echo "   - ✅ Найден через GitHub CLI (gh)."
 	else
-		error "Не удалось найти токен. Пожалуйста, войдите в GitHub CLI ('gh auth login') или установите GITHUB_TOKEN."
+		echo "   - ⚠️  Токен GitHub не найден. Будут использоваться только локальные коммиты."
 	fi
 
 	echo "🔍 Определение репозитория..."
@@ -73,51 +139,69 @@ function main() {
 	else
 		repo=$(git remote get-url origin | sed -n 's/.*github.com[:\/]\([^.]*\)\.git/\1/p')
 		if [[ -z "$repo" ]]; then
-			error "Не удалось определить репозиторий из 'git remote'. Убедитесь, что remote 'origin' настроен правильно."
+			echo "   - ⚠️  Не удалось определить GitHub репозиторий. Будут использоваться только локальные коммиты."
 		fi
 		echo "   - ✅ Репозиторий определен из git remote: ${repo}"
 	fi
 
-	echo "🔍 Определение диапазона тегов..."
+	echo "🔍 Определение диапазона..."
 	local target_tag
+	local previous_tag
 	if [[ -n "${target_tag_arg}" ]]; then
 		[[ "${target_tag_arg}" != "v"* ]] && target_tag_arg="v${target_tag_arg}"
 		if ! git rev-parse -q --verify "refs/tags/${target_tag_arg}" &>/dev/null; then
 			error "Тег '${target_tag_arg}' не найден в локальном репозитории."
 		fi
 		target_tag="${target_tag_arg}"
-		echo "   - ℹ️ Используется тег из аргумента: ${target_tag}"
+		previous_tag=$(git describe --tags --abbrev=0 "${target_tag}^" 2>/dev/null || git rev-list --max-parents=0 HEAD | head -n 1)
+		echo "   - ℹ️  Используется тег из аргумента: ${target_tag}"
+		echo "   - ✅ Диапазон: от ${previous_tag} до ${target_tag}"
 	else
-		target_tag=$(git describe --tags --abbrev=0)
-		echo "   - ℹ️ Аргумент не передан, используется последний тег: ${target_tag}"
+		if ! git describe --tags --abbrev=0 &>/dev/null; then
+			echo "   - ℹ️  Теги не найдены, используются все коммиты от начала репозитория"
+			previous_tag=$(git rev-list --max-parents=0 HEAD | head -n 1)
+			target_tag="HEAD"
+		else
+			local latest_tag=$(git describe --tags --abbrev=0)
+			local commits_after_tag=$(git rev-list "${latest_tag}..HEAD" --count 2>/dev/null || echo "0")
+			if [[ "${commits_after_tag}" -gt 0 ]]; then
+				echo "   - ℹ️  Найдено ${commits_after_tag} коммитов после последнего тега ${latest_tag}"
+				echo "   - ℹ️  Генерируется changelog для нереализованных изменений"
+				previous_tag="${latest_tag}"
+				target_tag="HEAD"
+				echo "   - ✅ Диапазон: от ${previous_tag} до HEAD"
+			else
+				echo "   - ℹ️  Коммитов после последнего тега не найдено, используется последний тег: ${latest_tag}"
+				target_tag="${latest_tag}"
+				previous_tag=$(git describe --tags --abbrev=0 "${target_tag}^" 2>/dev/null || git rev-list --max-parents=0 HEAD | head -n 1)
+				echo "   - ✅ Диапазон: от ${previous_tag} до ${target_tag}"
+			fi
+		fi
 	fi
 
-	local previous_tag=$(git describe --tags --abbrev=0 "${target_tag}^" 2>/dev/null || git rev-list --max-parents=0 HEAD | head -n 1)
-	echo "   - ✅ Диапазон: от ${previous_tag} до ${target_tag}"
-
-	echo "🔍 Получение коммитов через API..."
-	local response_body=$(curl -s \
-		-H "Accept: application/vnd.github.v3+json" \
-		-H "Authorization: Bearer ${token}" \
-		"https://api.github.com/repos/${repo}/compare/${previous_tag}...${target_tag}"
-	)
-
-	if echo "${response_body}" | jq -e '.message' > /dev/null; then
-		error "API GitHub вернул ошибку: $(echo "${response_body}" | jq -r '.message')"
+	echo "🔍 Получение коммитов..."
+	local all_commits=""
+	echo "   - Получение локальных коммитов..."
+	all_commits=$(get_local_commits "${previous_tag}" "${target_tag}")
+	if [[ -n "${token}" && -n "${repo}" ]]; then
+		echo "   - Попытка дополнения данными из GitHub API..."
+		local github_commits=""
+		if github_commits=$(get_github_commits "${repo}" "${token}" "${previous_tag}" "${target_tag}"); then
+			echo "   - ✅ Данные из GitHub API получены, объединяем с локальными..."
+			all_commits=$(printf "%s\n%s" "${all_commits}" "${github_commits}")
+		else
+			echo "   - ⚠️  Не удалось получить данные из API, используются только локальные коммиты"
+		fi
 	fi
-
-	local all_commits=$(echo "${response_body}" | jq -r \
-		'.commits[] | "* " + (.commit.message | split("\n")[0]) + " ([" + .author.login + "](https://github.com/" + .author.login + "))"'
-	)
+	echo "   - ✅ Коммиты обработаны."
 
 	if [[ -z "${all_commits}" ]]; then
 		echo "⚪️ Не найдено коммитов для обработки."
 		exit 0
 	fi
-	echo "   - ✅ Коммиты получены."
 
 	echo "🔍 Удаление дубликатов..."
-	local commits=$(echo "${all_commits}" | awk '!seen[$0]++')
+	local commits=$(deduplicate_and_format_commits "${all_commits}")
 	echo "   - ✅ Дубликаты удалены."
 
 	echo "🔍 Генерация списка изменений..."
