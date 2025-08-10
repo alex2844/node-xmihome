@@ -2,7 +2,7 @@ import Device from 'xmihome/device.js';
 /** @import { Property } from 'xmihome/device.js' */
 
 /**
- * Класс для управления умным увлажнителем Xiaomi Smart Humidifier 2 (deerma.humidifier.jsq2w).
+ * Класс для управления умным увлажнителем Xiaomi Smart Humidifier 2.
  * @extends Device
  */
 export default class DeermaHumidifier extends Device {

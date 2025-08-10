@@ -3,7 +3,7 @@ import zlib from 'zlib';
 /** @import { Property, Action } from 'xmihome/device.js' */
 
 /**
- * Класс для управления пылесосом ROIDMI EVE (roidmi.vacuum.v60).
+ * Класс для управления пылесосом ROIDMI EVE.
  * @extends Device
  */
 export default class RoidmiVacuum extends Device {

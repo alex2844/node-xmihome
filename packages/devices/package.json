@@ -9,7 +9,7 @@
 		"./*": "./src/*"
 	},
 	"files": [
-		"./src/*.js"
+		"./src/"
 	],
 	"license": "MIT",
 	"repository": {

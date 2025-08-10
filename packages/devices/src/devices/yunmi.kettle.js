@@ -4,7 +4,7 @@ import crypto from 'crypto';
 /** @import { Config, Property, UuidMapping, Schema } from 'xmihome/device.js' */
 
 /**
- * Класс для управления умным чайником Mi Smart Kettle (yunmi.kettle.v2).
+ * Класс для управления умным чайником Mi Smart Kettle.
  * @extends Device
  */
 export default class YunmiKettle extends Device {

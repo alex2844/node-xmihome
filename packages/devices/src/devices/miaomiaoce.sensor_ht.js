@@ -2,7 +2,7 @@ import Device from 'xmihome/device.js';
 /** @import { Property, UuidMapping } from 'xmihome/device.js' */
 
 /**
- * Класс для управления датчиком температуры и влажности Miaomiaoce Sensor HT.T8 (miaomiaoce.sensor_ht.t8).
+ * Класс для управления датчиком температуры и влажности Miaomiaoce Sensor HT.
  * @extends Device
  */
 export default class MiaomiaoceSensor extends Device {
