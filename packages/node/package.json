@@ -9,6 +9,7 @@
 		"./*": "./src/*"
 	},
 	"bin": {
+		"xmihome-cli": "./bin/cli.js",
 		"xmihome-setup-bluetooth": "./bin/setup-bluetooth.js"
 	},
 	"scripts": {
@@ -20,8 +21,10 @@
 		"./src/*.js"
 	],
 	"dependencies": {
+		"@inquirer/prompts": "^7.8.3",
 		"mijia-io": "github:salamwaddah/mijia-io",
-		"xmihome-devices": "workspace:*"
+		"xmihome-devices": "workspace:*",
+		"yargs": "^18.0.0"
 	},
 	"optionalDependencies": {
 		"dbus-next": "github:dcodeIO/node-dbus-next"
