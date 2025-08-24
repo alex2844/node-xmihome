@@ -4,6 +4,84 @@ The base class for all Xiaomi devices. It provides a unified interface for conne
 
 Instances of this class are typically created via the `XiaomiMiHome.getDevice()` method.
 
+## Static Methods
+
+### `registerModels(models)`
+
+Registers device classes from the `xmihome-devices` package, making them available to `findModel` and `create`.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `models` | `object` | An object where keys are models and values are device classes. |
+
+### `getModels()`
+
+Gets a list of all registered device models.
+
+**Returns:**
+
+- `string[]`: An array of model strings.
+
+### `findModel(device)`
+
+Finds the appropriate class for a device based on its `model` or `name`.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `device` | `object` | The device configuration object. |
+
+**Returns:**
+
+- `typeof Device \| undefined`: The found device class or `undefined`.
+
+### `create(device, client)`
+
+Creates an instance of the correct device class (`Device` or a subclass) based on the model. If no specific class is found for the model, it attempts to load the specification from the MiOT cloud.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `device` | `object` | The device configuration object. |
+| `client` | `XiaomiMiHome` | The main client instance. |
+
+**Returns:**
+
+- `Promise<Device>`: A promise that resolves to a `Device` instance.
+
+### `getDeviceId(device)`
+
+Generates a unique string identifier for a device instance based on its configuration.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `device` | `object` | The device configuration object. |
+
+**Returns:**
+
+- `string`: A unique key for the device.
+
+### `getDeviceType(device, credentials)`
+
+Determines the most likely connection type (`miio`, `bluetooth`, `cloud`) based on the available fields in the device configuration.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `device` | `object` | The device configuration object. |
+| `credentials` | `object` | (Optional) Cloud credentials. |
+
+**Returns:**
+
+- `'miio' \| 'bluetooth' \| 'cloud' \| undefined`: A string with the connection type.
+
 ## Properties
 
 | Name | Type | Description |

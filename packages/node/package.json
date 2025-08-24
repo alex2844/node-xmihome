@@ -9,7 +9,7 @@
 		"./*": "./src/*"
 	},
 	"bin": {
-		"xmihome-cli": "./bin/cli.js",
+		"xmihome": "./bin/cli.js",
 		"xmihome-setup-bluetooth": "./bin/setup-bluetooth.js"
 	},
 	"scripts": {

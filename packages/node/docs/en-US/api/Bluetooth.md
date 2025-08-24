@@ -14,6 +14,14 @@ Creates and initializes a new instance of the Bluetooth class. This is the recom
 
 ## Methods
 
+### `checkBlueZService()`
+
+Checks if the BlueZ service (the standard Linux Bluetooth stack) is available via D-Bus. This is useful for diagnosing Bluetooth issues on Linux systems before attempting to initialize an adapter.
+
+**Returns:**
+
+- `Promise<boolean>`: A promise that resolves to `true` if the service is available, and `false` otherwise.
+
 ### `startDiscovery(filters)`
 
 Starts scanning for Bluetooth LE devices.

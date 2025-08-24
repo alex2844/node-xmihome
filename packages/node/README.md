@@ -116,6 +116,15 @@ async function main() {
 main();
 ```
 
+## Command-Line Interface (CLI)
+
+To simplify initial setup, authentication, and device discovery, the project includes
+a convenient command-line interface (CLI) in the `@xmihome/node` package.
+It allows you to easily log into the Xiaomi Cloud and get a list of your devices
+without writing any code, which can be useful for obtaining tokens or device IDs.
+
+[**→ Read more about all commands and features in the CLI documentation**](./docs/en-US/CLI.md)
+
 ## Configuration
 
 The configuration object passed to the `XiaomiMiHome` constructor can contain:

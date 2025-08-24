@@ -27,13 +27,21 @@ Searches for a device specification on `miot-spec.org` by its model name.
 
 ## Methods
 
-### `login()`
+### `login(handlers)`
 
-Logs into the Xiaomi account to obtain tokens required for cloud requests. It is called automatically on the first cloud request.
+Logs into the Xiaomi account to obtain tokens required for cloud requests. It is called automatically on the first cloud request. Supports two-factor authentication (2FA) via a callback.
+
+**Parameters:**
+
+| Name | Type | Description |
+|---|---|---|
+| `handlers` | `object` | (Optional) An object with handlers for interactive steps. |
+| `handlers.on2fa` | `(url: string) => Promise<string>` | (Optional) An async function that is called if 2FA is required. It receives a verification `url` and must return a promise that resolves with the confirmation code (`ticket`) entered by the user. |
+
 
 **Returns:**
 
-- `Promise<void>`
+- `Promise<object>`: A promise that resolves with an object containing the tokens (`userId`, `ssecurity`, `serviceToken`).
 
 ### `request(path, data)`
 
