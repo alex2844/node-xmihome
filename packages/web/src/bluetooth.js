@@ -25,7 +25,7 @@ export class BluetoothCharacteristic extends EventEmitter {
 
 	/** @param {Buffer} buffer */
 	async writeValue(buffer) {
-		return this.native.writeValueWithResponse(buffer);
+		return this.native.writeValueWithResponse(new Uint8Array(buffer));
 	};
 
 	async startNotifications() {
