@@ -7,6 +7,7 @@
 			"username": "Username",
 			"password": "Password",
 			"country": "Country",
+			"login": "Login",
 			"defaults": "Defaults",
 			"connectionType": "Default mode",
 			"connAuto": "Auto",
@@ -17,6 +18,15 @@
 		"placeholder": {
 			"name": "Name",
 			"username": "Email / Phone / Xiaomi ID"
+		},
+		"dialog": {
+			"errorLoginFailed": "Login failed",
+			"title": "Enter 2FA Verification Code",
+			"instructionsTitle": "Two-Factor Authentication is required.",
+			"instruction1": "Open this URL in a new tab to receive your verification code:",
+			"instruction2": "Enter the code you received below:",
+			"buttonSubmit": "Submit",
+			"buttonCancel": "Cancel"
 		}
 	}
 }

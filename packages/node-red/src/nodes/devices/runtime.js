@@ -1,7 +1,5 @@
-/**
- * @import { Node, NodeAPI, NodeDef, NodeMessage } from 'node-red'
- * @import { NodeInstance as ConfigNodeInstance, ConfigNode } from '../config/runtime.js'
- */
+/** @import { Node, NodeAPI, NodeDef, NodeMessage } from 'node-red' */
+/** @import { NodeInstance as ConfigNodeInstance, ConfigNode } from '../config/runtime.js' */
 
 /**
  * @typedef {{

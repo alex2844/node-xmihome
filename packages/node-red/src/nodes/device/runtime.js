@@ -1,10 +1,8 @@
 import Device from 'xmihome/device.js';
-/**
- * @import { Node, NodeAPI, NodeDef, NodeMessage } from 'node-red'
- * @import { NodeInstance as ConfigNodeInstance, ConfigNode } from '../config/runtime.js'
- * @import { Config as DeviceConfig } from 'xmihome/device.js'
- * @import { XiaomiMiHome } from 'xmihome'
- */
+/** @import { Node, NodeAPI, NodeDef, NodeMessage } from 'node-red' */
+/** @import { NodeInstance as ConfigNodeInstance, ConfigNode } from '../config/runtime.js' */
+/** @import { Config as DeviceConfig } from 'xmihome/device.js' */
+/** @import { XiaomiMiHome } from 'xmihome' */
 
 /**
  * @typedef {{

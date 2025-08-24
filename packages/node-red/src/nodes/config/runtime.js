@@ -1,10 +1,9 @@
 import XiaomiMiHome from 'xmihome';
 import { CACHE_TTL } from 'xmihome/constants.js';
-/**
- * @import { Node, NodeAPI, NodeDef } from 'node-red'
- * @import { Request, Response } from 'express'
- * @import { default as Device, Config as DeviceConfig } from 'xmihome/device.js'
- */
+/** @import { Credentials } from 'xmihome' */
+/** @import { default as Device, Config as DeviceConfig } from 'xmihome/device.js' */
+/** @import { Node, NodeAPI, NodeDef } from 'node-red' */
+/** @import { Request, Response } from 'express' */
 
 /**
  * Глобальный Map для отслеживания активных процессов обновления списка устройств.
@@ -15,21 +14,20 @@ import { CACHE_TTL } from 'xmihome/constants.js';
 const refreshPromises = new Map();
 
 /**
+ * Глобальный Map для хранения "resolve" функций промисов, ожидающих 2FA-тикет.
+ * Это позволяет "поставить на паузу" процесс логина и возобновить его из другого HTTP-запроса.
+ * Ключ - stateToken (string), значение - функция resolve(ticket: string).
+ * @type {Map<string, (ticket: string) => void>}
+ */
+const pending2faResolvers = new Map();
+
+/**
  * @typedef {{
  *   debug: boolean;
 	 connectionType: ('auto'|'cloud'|'miio'|'bluetooth');
  * }} Config
  */
 /** @typedef {NodeDef & Config} ConfigDef */
-
-/**
- * @typedef {{
- *   username: string;
- *   password: string;
- *   country: ('sg'|'cn'|'ru'|'us'|'tw'|'de');
- * }} Credentials
- */
-
 /** @typedef {Node<Credentials> & { instance: ConfigNode }} NodeInstance */
 
 export class ConfigNode {
@@ -78,8 +76,8 @@ export class ConfigNode {
 	 */
 	disconnectTimers = new Map();
 
-	/** @type {string} */
-	endpoint;
+	/** @type {Record<string, string>} */
+	endpoint = {};
 
 	/**
 	 * Кеш списка устройств для предотвращения частых запросов к API.
@@ -104,14 +102,18 @@ export class ConfigNode {
 		this.#node = node;
 		this.#config = config;
 		this.#RED = RED;
+		console.log('config', node);
 
-		this.endpoint = `/xmihome/${this.#node.id}/devices`;
-		this.#RED.httpAdmin.get(this.endpoint, RED.auth.needsPermission('xmihome-config.read'), this.#getDevicesHandler.bind(this));
+		this.endpoint['devices'] = `/xmihome/${this.#node.id}/devices`;
+		this.endpoint['auth'] = `/xmihome/${this.#node.id}/auth`;
+		this.endpoint['auth_ticket'] = `/xmihome/${this.#node.id}/auth/submit_ticket`;
+		this.#RED.httpAdmin.get(this.endpoint['devices'], RED.auth.needsPermission('xmihome-config.read'), this.#getDevicesHandler.bind(this));
+		this.#RED.httpAdmin.post(this.endpoint['auth'], RED.auth.needsPermission('xmihome-config.write'), this.#handleAuth.bind(this));
+		this.#RED.httpAdmin.post(this.endpoint['auth_ticket'], RED.auth.needsPermission('xmihome-config.write'), this.#handleAuthSubmitTicket.bind(this));
 		this.#node.on('close', this.#close.bind(this));
 	};
 
 	/**
-	 * Геттер для "ленивого" получения клиента из узла конфигурации.
 	 * @returns {XiaomiMiHome}
 	 */
 	get client() {
@@ -188,19 +190,94 @@ export class ConfigNode {
 	};
 
 	/**
+	 * @param {Request} req
+	 * @param {Response} res
+	 */
+	async #handleAuth(req, res) {
+		const { username, password, country } = req.body;
+		if (!username || !password || !country)
+			return res.status(400).json({ error: 'Username, password, and country are required.' });
+
+		const credentials = {
+			country, username,
+			password: (password === '__PWRD__') ? this.#node.credentials.password : password
+		};
+		const client = new XiaomiMiHome({
+			credentials,
+			logLevel: this.#config.debug ? 'debug' : 'none'
+		});
+
+		const stateToken = this.#RED.util.generateId();
+
+		const handlers = {
+			on2fa: (/** @type {string} */ notificationUrl) => {
+				this.#node.debug(`2FA is required. Pausing login process with stateToken: ${stateToken}`);
+				return new Promise((resolve, reject) => {
+					pending2faResolvers.set(stateToken, resolve);
+					res.json({
+						notificationUrl, stateToken,
+						status: '2fa_required'
+					});
+					setTimeout(() => {
+						if (pending2faResolvers.has(stateToken)) {
+							pending2faResolvers.delete(stateToken);
+							reject(new Error('2FA prompt timed out after 5 minutes.'));
+						}
+					}, CACHE_TTL);
+				});
+			}
+		};
+		try {
+			const tokens = await client.miot.login(handlers);
+			this.#RED.nodes.addCredentials(this.#node.id, { ...credentials, ...tokens });
+			if (!res.headersSent)
+				res.json({
+					status: 'success',
+					message: 'Login successful! Deploy your changes.'
+				});
+		} catch (error) {
+			if (!res.headersSent)
+				res.status(401).json({ error: error.message });
+			else
+				this.#node.error(`Error during paused 2FA login: ${error.message}`);
+		} finally {
+			pending2faResolvers.delete(stateToken);
+		}
+	};
+
+	/**
+	 * @param {Request} req
+	 * @param {Response} res
+	 */
+	#handleAuthSubmitTicket(req, res) {
+		const { stateToken, ticket } = req.body;
+		if (!stateToken || !ticket)
+			return res.status(400).json({ error: 'State token and ticket are required.' });
+		const resolve = pending2faResolvers.get(stateToken);
+		if (resolve) {
+			this.#node.debug(`Resuming login for stateToken ${stateToken} with provided ticket.`);
+			resolve(ticket);
+			pending2faResolvers.delete(stateToken);
+			res.json({
+				status: 'ticket_submitted',
+				message: 'Ticket received. Finalizing login...'
+			});
+		} else
+			res.status(408).json({ error: 'Login session expired or invalid. Please try again.' });
+	};
+
+	/**
 	 * @param {boolean} removed
 	 * @param {() => void} done
 	 */
 	async #close(removed, done) {
 		this.#node.debug(`Closing config node ${this.#node.id} (removed: ${!!removed})`);
 		refreshPromises.delete(this.#node.id);
+		const endpoints = Object.values(this.endpoint);
 		const routes = this.#RED.httpAdmin._router.stack;
 		for (let i = routes.length - 1; i >= 0; i--) {
-			if (routes[i].route?.path === this.endpoint) {
+			if (routes[i].route && endpoints.includes(routes[i].route.path))
 				routes.splice(i, 1);
-				this.#node.debug(`Removed HTTP admin route: ${this.endpoint}`);
-				break;
-			}
 		}
 		if (this.#client)
 			try {
@@ -227,7 +304,10 @@ export default function (RED) {
 		credentials: {
 			username: { type: 'text' },
 			password: { type: 'password' },
-			country: { type: 'text' }
+			country: { type: 'text' },
+			userId: { type: 'text' },
+			ssecurity: { type: 'text' },
+			serviceToken: { type: 'text' }
 		}
 	});
 };

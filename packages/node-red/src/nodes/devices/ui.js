@@ -1,7 +1,5 @@
-/**
- * @import { EditorRED, EditorNodePropertiesDef } from 'node-red'
- * @import { Config } from './runtime.js'
- */
+/** @import { EditorRED, EditorNodePropertiesDef } from 'node-red' */
+/** @import { Config } from './runtime.js' */
 /** @typedef {Config & { name: string }} ConfigDef */
 
 var /** @type {EditorRED} */ RED = window['RED'];

@@ -7,6 +7,7 @@
 			"username": "Имя пользователя",
 			"password": "Пароль",
 			"country": "Страна",
+			"login": "Войти",
 			"defaults": "Настройки по умолчанию",
 			"connectionType": "Режим по умолчанию",
 			"connAuto": "Авто",
@@ -17,6 +18,15 @@
 		"placeholder": {
 			"name": "Имя",
 			"username": "Email / Phone / Xiaomi ID"
+		},
+		"dialog": {
+			"errorLoginFailed": "Ошибка входа",
+			"title": "Введите код проверки 2FA",
+			"instructionsTitle": "Требуется двухфакторная аутентификация.",
+			"instruction1": "Откройте этот URL в новой вкладке, чтобы получить код подтверждения:",
+			"instruction2": "Введите полученный код ниже:",
+			"buttonSubmit": "Отправить",
+			"buttonCancel": "Отмена"
 		}
 	}
 }

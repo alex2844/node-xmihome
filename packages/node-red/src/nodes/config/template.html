@@ -27,6 +27,13 @@
 			<option value='de'>de</option>
 		</select>
 	</div>
+	<div class="form-row">
+		<label>&nbsp;</label>
+		<button class="red-ui-button" id="node-config-button-login" style="width: 70%;">
+			<i class="fa fa-sign-in"></i>
+			<span data-i18n="config.label.login"></span>
+		</button>
+	</div>
 	<fieldset>
 		<legend data-i18n="config.label.defaults"></legend>
 		<div class="form-row">
@@ -40,3 +47,20 @@
 		</div>
 	</fieldset>
 </fieldset>
+<template id="xmihome-2fa-dialog-template">
+	<div class="form-row">
+		<p data-i18n="config.dialog.instructionsTitle" style="margin-top: 0;"></p>
+	</div>
+	<div class="form-row">
+		<label style="width: auto; margin-bottom: 5px;">
+			<i class="fa fa-external-link"></i> <span data-i18n="config.dialog.instruction1"></span>
+		</label>
+		<a href="#" class="xmihome-2fa-url" target="_blank" style="display: block; word-break: break-all; padding: 8px; margin: 8px 0; background-color: #f5f5f5; border-radius: 4px; text-decoration: none; color: #0077dd;"></a>
+	</div>
+	<div class="form-row">
+		<label for="xmihome-2fa-ticket-input" style="width: auto; margin-bottom: 5px;">
+			<i class="fa fa-ticket"></i> <span data-i18n="config.dialog.instruction2"></span>
+		</label>
+		<input type="text" id="xmihome-2fa-ticket-input" style="width: 100%;" />
+	</div>
+</template>
