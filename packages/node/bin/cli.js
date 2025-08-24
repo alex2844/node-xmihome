@@ -9,7 +9,7 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import XiaomiMiHome from '../src/index.js';
 import { COUNTRIES, CACHE_TTL } from '../src/constants.js';
 /** @import { Credentials } from '../src/index.js' */
-/** @import { Config as Device } from '../src/device.js' */
+/** @import { DiscoveredDevice } from '../src/device.js' */
 /** @import { ArgumentsCamelCase } from 'yargs' */
 
 const CONFIG_DIR = path.join(homedir(), '.config', 'xmihome');
@@ -66,7 +66,7 @@ const loadDeviceCache = async () => {
 	return null;
 };
 
-const saveDeviceCache = async (/** @type {Device[]} */ devices) => {
+const saveDeviceCache = async (/** @type {DiscoveredDevice[]} */ devices) => {
 	await ensureConfigDir();
 	const cache = {
 		timestamp: Date.now(),
@@ -75,17 +75,18 @@ const saveDeviceCache = async (/** @type {Device[]} */ devices) => {
 	await writeFile(DEVICE_CACHE_FILE, JSON.stringify(cache, null, 2));
 };
 
-const formatTable = (/** @type {Device[]} */ devices) => {
+const formatTable = (/** @type {DiscoveredDevice[]} */ devices) => {
 	if (devices.length === 0) {
 		console.log('No devices found.');
 		return;
 	}
-	const headers = ['Name', 'Model', 'ID / IP / MAC', 'Token'];
+	const headers = ['Name', 'Model', 'ID / IP / MAC', 'Token', 'Online'];
 	const rows = devices.map(d => [
 		d.name || '',
 		d.model || '',
 		d.id || d.address || d.mac || '',
-		d.token || 'N/A'
+		d.token || 'N/A',
+		typeof d.isOnline === 'boolean' ? (d.isOnline ? 'Yes' : 'No') : 'N/A'
 	]);
 
 	const colWidths = headers.map(h => h.length);
@@ -103,7 +104,7 @@ const formatTable = (/** @type {Device[]} */ devices) => {
 	rows.forEach(printRow);
 };
 
-const handleLoginCommand = async (/** @type {LoginCommandArgs} */ credentials) => {
+const handleLoginCommand = async (/** @type {LoginCommandArgs} */ credentials = {}) => {
 	const client = new XiaomiMiHome({ credentials, logLevel: 'debug' });
 	const handlers = {
 		on2fa: async (/** @type {string} */ notificationUrl) => {
@@ -163,6 +164,8 @@ const handleDevicesCommand = async (/** @type {DevicesCommandArgs} */ options) =
 		formatTable(devices);
 	} catch (error) {
 		console.error(`\n❌ Error fetching devices: ${error.message}`);
+	} finally {
+		await client.destroy();
 	}
 };
 
