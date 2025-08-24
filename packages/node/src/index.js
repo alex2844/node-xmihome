@@ -3,16 +3,23 @@ import EventEmitter from 'events';
 import Device from './device.js';
 import Miot from './miot.js';
 import Bluetooth from './bluetooth.js';
-import { LOG_LEVELS, DEFAULT_LOG_LEVEL, LIB_ID, UUID } from './constants.js';
+import { LOG_LEVELS, DEFAULT_LOG_LEVEL, LIB_ID, UUID, COUNTRIES } from './constants.js';
 import { devices } from 'xmihome-devices';
 /** @import { Config as DeviceConfig } from './device.js' */
 
 /**
+ * @typedef {Object} Credentials
+ * @property {(typeof COUNTRIES)[number]} [country] Страна для облачного подключения (например, 'ru', 'cn').
+ * @property {string} [username] Имя пользователя для облачного подключения.
+ * @property {string} [password] Пароль для облачного подключения.
+ * @property {string|number} [userId] ID пользователя Xiaomi. Если указан вместе с ssecurity и serviceToken, авторизация пропускается.
+ * @property {string} [ssecurity] Ключ безопасности ssecurity. Если указан вместе с userId и serviceToken, авторизация пропускается.
+ * @property {string} [serviceToken] Токен сервиса serviceToken. Если указан вместе с userId и ssecurity, авторизация пропускается.
+ */
+
+/**
  * @typedef {Object} Config
- * @property {object} [credentials] Учетные данные для облачного подключения.
- * @property {string} [credentials.username] Имя пользователя для облачного подключения.
- * @property {string} [credentials.password] Пароль для облачного подключения.
- * @property {string} [credentials.country] Страна для облачного подключения (например, 'ru', 'cn').
+ * @property {Credentials} [credentials] Учетные данные для облачного подключения.
  * @property {('miio'|'bluetooth'|'cloud')} [connectionType] Тип подключения по умолчанию.
  * @property {DeviceConfig[]} [devices] Массив устройств для поиска и подключения.
  * @property {('none'|'error'|'warn'|'info'|'debug')} [logLevel='none'] Уровень логирования через console. По умолчанию 'none'.
@@ -216,7 +223,7 @@ export default class XiaomiMiHome extends EventEmitter {
 	 * Позволяет настроить тип поиска и прервать его досрочно с помощью callback-функции.
 	 * @param {object} [options] Опции для поиска устройств.
 	 * @param {number} [options.timeout=10000] Таймаут для локального поиска в миллисекундах.
-	 * @param {('miio'|'bluetooth'|'cloud')} [options.connectionType] Предпочитаемый тип поиска.
+	 * @param {('miio'|'bluetooth'|'miio+bluetooth'|'cloud')} [options.connectionType] Предпочитаемый тип поиска.
 	 * @param {(
 	 *   device: DeviceConfig,
 	 *   devices: DeviceConfig[],
@@ -240,7 +247,8 @@ export default class XiaomiMiHome extends EventEmitter {
 		connectionType = this.config.connectionType,
 		onDeviceFound = null
 	} = {}) {
-		const hasCredentials = !!(this.config.credentials?.username && this.config.credentials?.password);
+		const { username, password, userId, ssecurity, serviceToken } = this.config.credentials || {};
+		const hasCredentials = !!((username && password) || (userId && ssecurity && serviceToken));
 		const discoveryStrategy = connectionType || (hasCredentials ? 'cloud' : 'miio+bluetooth');
 		this.log('info', `Starting device discovery using strategy: "${discoveryStrategy}"`);
 		switch (discoveryStrategy) {
@@ -376,12 +384,14 @@ export default class XiaomiMiHome extends EventEmitter {
 				};
 				try {
 					this.bluetooth.on('available', btListener);
-					await this.bluetooth.startDiscovery(UUID);
-					cleanupTasks.push(async () => {
-						this.bluetooth.off('available', btListener);
-						await this.bluetooth.stopDiscovery();
-					});
-					this.log('debug', 'Started Bluetooth discovery.');
+					const btStarted = await this.bluetooth.startDiscovery([...UUID]);
+					if (btStarted) {
+						cleanupTasks.push(async () => {
+							this.bluetooth.off('available', btListener);
+							await this.bluetooth.stopDiscovery();
+						});
+						this.log('debug', 'Started Bluetooth discovery.');
+					}
 				} catch (err) {
 					this.log('error', 'Failed to start Bluetooth discovery:', err);
 				}
