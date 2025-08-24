@@ -91,14 +91,13 @@ function main() {
 			curl_headers=("-H" "Content-Type: application/json")
 			api_url="https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent?key=${GEMINI_API_KEY}"
 			jq_parser_path='.candidates[0].content.parts[0].text'
-			request_json=$(jq -n \
+			request_json=$(echo "${project_context}" | jq -Rs \
 				--arg prompt_content "${prompt_content}" \
-				--arg project_context "${project_context}" \
 				'{
 					"contents": [{
 						"parts": [
 							{"text": $prompt_content},
-							{"text": $project_context}
+							{"text": .}
 						]
 					}],
 					"generationConfig": { "responseMimeType": "text/plain" }
@@ -113,15 +112,14 @@ function main() {
 			curl_headers+=("-H" "Authorization: Bearer ${OPENROUTER_API_KEY}")
 			api_url="https://openrouter.ai/api/v1/chat/completions"
 			jq_parser_path='.choices[0].message.content'
-			request_json=$(jq -n \
+			request_json=$(echo "${project_context}" | jq -Rs \
 				--arg model "${MODEL_ID}" \
 				--arg prompt_content "${prompt_content}" \
-				--arg project_context "${project_context}" \
 				'{
 					"model": $model,
 					"messages": [
 						{"role": "system", "content": $prompt_content},
-						{"role": "user", "content": $project_context}
+						{"role": "user", "content": .}
 					]
 				}'
 			)
