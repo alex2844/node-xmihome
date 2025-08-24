@@ -286,6 +286,7 @@ export default class XiaomiMiHome extends EventEmitter {
 			this.log('info', `Found ${result.list.length} raw devices in the cloud.`);
 			this.log('debug', 'Raw cloud devices found:', result.list);
 			const devices = [];
+			this.config.devices = [];
 			for (const dev of result.list) {
 				const device = {
 					id: dev.did,
@@ -296,6 +297,7 @@ export default class XiaomiMiHome extends EventEmitter {
 					model: dev.model,
 					isOnline: dev.isOnline
 				};
+				this.config.devices.push(device);
 				if (this.#processFoundDevice(device, devices, 'cloud', onDeviceFound))
 					break;
 			}
