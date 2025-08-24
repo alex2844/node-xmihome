@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import miio from 'mijia-io';
-/** @import { XiaomiMiHome } from './index.js' */
+import { COUNTRIES } from './constants.js';
+/** @import { Credentials, XiaomiMiHome } from './index.js' */
 
 /**
  * Класс для взаимодействия с MiIO и облаком Xiaomi.
@@ -60,12 +61,6 @@ export default class Miot {
 	locale = 'en';
 
 	/**
-	 * Список поддерживаемых стран для облачных запросов.
-	 * @type {string[]}
-	 */
-	countries = ['sg', 'cn', 'ru', 'us', 'tw', 'de'];
-
-	/**
 	 * Экземпляр класса XiaomiMiHome.
 	 * @type {XiaomiMiHome}
 	 */
@@ -81,7 +76,7 @@ export default class Miot {
 
 	/**
 	 * Возвращает учетные данные для облачного подключения из конфигурации клиента.
-	 * @type {object}
+	 * @type {Credentials}
 	 */
 	get credentials() {
 		return this.client.config.credentials || {};
@@ -158,35 +153,124 @@ export default class Miot {
 	};
 
 	/**
-	 * Выполняет вход в аккаунт Xiaomi и получает учетные данные (ssecurity, userId, serviceToken).
+	 * Выполняет верификацию 2FA тикета.
+	 * @param {string} notificationUrl URL для верификации.
+	 * @param {string} ticket Код подтверждения от пользователя.
+	 * @returns {Promise<string>} Финальный URL для получения serviceToken.
+	 */
+	async #verify2faTicket(notificationUrl, ticket) {
+		this.client.log('debug', '2FA Step: Verifying ticket');
+
+		// Шаг 1: Запрашиваем доступные методы верификации, чтобы получить cookie и определить правильный 'flag'
+		const listUrl = notificationUrl.replace('authStart', 'list');
+		const listResponse = await fetch(listUrl);
+		const identityCookie = listResponse.headers.get('set-cookie');
+		if (!identityCookie)
+			throw new Error('2FA verification failed: Could not get identity_session cookie.');
+
+		let listData = {};
+		try {
+			const responseText = await listResponse.text();
+			listData = this.parseJson(responseText);
+			this.client.log('debug', '2FA Step: Available methods response (JSON):', listData);
+		} catch (e) {
+			this.client.log('debug', '2FA Step: Could not parse methods response as JSON. Proceeding with default phone verification.');
+		}
+
+		const flag = listData?.flag || 4;
+		const verifyPath = flag === 8 ? '/identity/auth/verifyEmail' : '/identity/auth/verifyPhone';
+		this.client.log('debug', `2FA Step: Using verification method. Flag: ${flag}, Path: ${verifyPath}`);
+
+		// Шаг 2: Теперь отправляем сам тикет на правильный эндпоинт с правильным флагом
+		const verifyUrl = new URL(`https://account.xiaomi.com${verifyPath}`);
+		verifyUrl.searchParams.set('_dc', String(Date.now()));
+
+		const verifyResponse = await fetch(verifyUrl.toString(), {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+				'Cookie': identityCookie,
+				'Accept': 'application/json',
+				'x-requested-with': 'XMLHttpRequest'
+			},
+			body: new URLSearchParams({
+				ticket,
+				trust: 'true',
+				_json: 'true',
+				_flag: flag
+			})
+		});
+
+		const verifyText = await verifyResponse.text();
+		const verifyData = this.parseJson(verifyText);
+		this.client.log('debug', '2FA Step: Verification response:', verifyData);
+
+		if ((verifyData.code === 0) && verifyData.location) {
+			this.client.log('debug', '2FA ticket verification successful.');
+			return verifyData.location;
+		} else {
+			const errorDescription = verifyData.desc || verifyData.tips || 'Unknown error';
+			throw new Error(`2FA verification failed: ${errorDescription} (Code: ${verifyData.code})`);
+		}
+	};
+
+	/**
+	 * Выполняет вход в аккаунт Xiaomi и возвращает учетные данные.
+	 * @param {object} [handlers] - Объект с колбэками для обработки интерактивных шагов.
+	 * @param {(url: string) => Promise<string>} [handlers.on2fa] - Колбэк для получения 2FA тикета.
+	 * @returns {Promise<{userId: number, ssecurity: string, serviceToken: string, country: (typeof COUNTRIES)[number]}>} - Объект с полученными учетными данными.
 	 * @throws {Error} Если не удалось выполнить вход на каком-либо из этапов.
 	 */
-	async login() {
+	async login(handlers) {
 		this.client.log('info', `Attempting login for user: ${this.credentials.username}`);
 		if (!this.credentials.username)
 			throw new Error('username empty');
 		if (!this.credentials.password)
 			throw new Error('password empty');
-
-		// --- Шаг 1: Получение _sign ---
-		this.client.log('debug', 'Login Step 1: Fetching _sign');
-		const step1Response = await fetch('https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true');
-		if (!step1Response.ok)
-			throw new Error(`Response step 1 error with status ${step1Response.statusText}`);
-		const step1Text = await step1Response.text();
-		const step1Data = this.parseJson(step1Text);
+		let ssecurity, userId, serviceToken;
+		const serviceLoginUrl = 'https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true';
+		const logHeaders = (/** @type {Headers} */ headers) => JSON.stringify(Object.fromEntries(headers.entries()), null, 2);
+		const cookieJar = new Map();
+		const updateCookieJar = (/** @type {string[]} */ newCookies) => {
+			if (!newCookies?.length)
+				return;
+			for (const cookie of newCookies) {
+				if (!cookie)
+					continue;
+				const name = cookie.split('=')[0].trim();
+				if (cookie.includes('Max-Age=0') || cookie.toUpperCase().includes('EXPIRED')) {
+					cookieJar.delete(name);
+					this.client.log('debug', `[DEBUG] COOKIE JAR: Deleting expired cookie: ${name}`);
+				} else {
+					cookieJar.set(name, cookie);
+					this.client.log('debug', `[DEBUG] COOKIE JAR: Setting/updating cookie: ${name}`);
+				}
+			}
+		};
+		const getCookieHeader = () => Array.from(cookieJar.values()).map(c => c.split(';')[0]).join('; ');
+		const getCookieValue = (/** @type {string} */ name) => {
+			const cookie = cookieJar.get(name);
+			if (!cookie)
+				return null;
+			const valuePart = cookie.split(';')[0];
+			return valuePart.substring(valuePart.indexOf('=') + 1);
+		};
+		this.client.log('debug', `[DEBUG] STEP 1: Fetching _sign from ${serviceLoginUrl}`);
+		const step1Response = await fetch(serviceLoginUrl);
+		this.client.log('debug', `[DEBUG] STEP 1: Response status: ${step1Response.status}`);
+		this.client.log('debug', `[DEBUG] STEP 1: Response headers:\n${logHeaders(step1Response.headers)}`);
+		updateCookieJar(step1Response.headers.getSetCookie?.() || [step1Response.headers.get('set-cookie')]);
+		this.client.log('debug', `[DEBUG] STEP 1: Cookie Jar state:`, Object.fromEntries(cookieJar));
+		const step1Data = this.parseJson(await step1Response.text());
 		if (!step1Data._sign)
 			throw new Error('Login step 1 failed: _sign not found');
 		const sign = step1Data._sign;
-		this.client.log('debug', 'Login Step 1: Got _sign successfully');
-
-		// --- Шаг 2: Отправка учетных данных и получение токенов ---
-		this.client.log('debug', 'Login Step 2: Sending credentials');
-		const step2Response = await fetch('https://account.xiaomi.com/pass/serviceLoginAuth2', {
+		const step2Url = 'https://account.xiaomi.com/pass/serviceLoginAuth2';
+		this.client.log('debug', `\n[DEBUG] STEP 2: Sending credentials to ${step2Url}`);
+		this.client.log('debug', `[DEBUG] STEP 2: Sending with VALID Cookie header: ${getCookieHeader()}`);
+		const step2Response = await fetch(step2Url, {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded'
-			},
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Cookie': getCookieHeader() },
 			body: new URLSearchParams({
 				user: this.credentials.username,
 				hash: crypto.createHash('md5').update(this.credentials.password).digest('hex').toUpperCase(),
@@ -197,37 +281,64 @@ export default class Miot {
 				_sign: sign
 			})
 		});
-		if (!step2Response.ok)
-			throw new Error(`Response step 2 error with status ${step2Response.statusText}`);
-		const step2Text = await step2Response.text();
-		const { ssecurity, userId, location } = this.parseJson(step2Text);
-		if (!ssecurity || !userId || !location) {
-			this.client.log('error', 'Login Step 2 Failed: Missing ssecurity, userId, or location.');
-			throw new Error('Failed to sign in at step 2. Please sign in manually https://account.xiaomi.com/');
+		this.client.log('debug', `[DEBUG] STEP 2: Response status: ${step2Response.status}`);
+		this.client.log('debug', `[DEBUG] STEP 2: Response headers:\n${logHeaders(step2Response.headers)}`);
+		updateCookieJar(step2Response.headers.getSetCookie?.() || []);
+		const step2Data = this.parseJson(await step2Response.text());
+		this.client.log('debug', `[DEBUG] STEP 2: Response body:`, step2Data);
+		if (step2Data.notificationUrl) {
+			if (!handlers?.on2fa)
+				throw new Error('Two-factor authentication is required, but no "on2fa" handler was provided.');
+			const ticket = await handlers.on2fa(step2Data.notificationUrl);
+			if (!ticket)
+				throw new Error('2FA ticket was not provided. Login aborted.');
+			let currentUrl = await this.#verify2faTicket(step2Data.notificationUrl, ticket);
+			for (let i = 0; i < 10; i++) {
+				this.client.log('debug', `\n[DEBUG] REDIRECT LOOP ${i}: Fetching URL: ${currentUrl}`);
+				this.client.log('debug', `[DEBUG] REDIRECT LOOP ${i}: Sending with Cookie header: ${getCookieHeader()}`);
+				const response = await fetch(currentUrl, { redirect: 'manual', headers: { 'Cookie': getCookieHeader() } });
+				this.client.log('debug', `[DEBUG] REDIRECT LOOP ${i}: Response status: ${response.status}`);
+				this.client.log('debug', `[DEBUG] REDIRECT LOOP ${i}: Response headers:\n${logHeaders(response.headers)}`);
+				updateCookieJar(response.headers.getSetCookie?.() || []);
+				if (!ssecurity && response.headers.has('extension-pragma')) {
+					const pragma = response.headers.get('extension-pragma');
+					try {
+						ssecurity = JSON.parse(pragma).ssecurity;
+						this.client.log('info', `[DEBUG] SUCCESS: ssecurity captured from extension-pragma header: ${ssecurity}`);
+					} catch (e) {
+						this.client.log('warn', 'Could not parse extension-pragma header as JSON', pragma);
+					}
+				}
+				if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
+					currentUrl = new URL(response.headers.get('location'), currentUrl).toString();
+				} else { 
+					this.client.log('debug', `[DEBUG] REDIRECT LOOP ${i}: End of redirect chain.`);
+					break; 
+				}
+			}
+			userId = getCookieValue('userId');
+			serviceToken = getCookieValue('serviceToken');
+		} else if (step2Data.ssecurity) {
+			ssecurity = step2Data.ssecurity;
+			userId = step2Data.userId;
+			const step3Response = await fetch(step2Data.location);
+			updateCookieJar(step3Response.headers.getSetCookie?.() || []);
+			serviceToken = getCookieValue('serviceToken');
+		} else
+			throw new Error(`Login failed at Step 2. Server response: ${JSON.stringify(step2Data)}`);
+		if (!ssecurity || !userId || !serviceToken) {
+			this.client.log('error', `Login failed. ssecurity: ${!!ssecurity}, userId: ${!!userId}, serviceToken: ${!!serviceToken}`);
+			this.client.log('debug', 'Final state of cookie jar:', Object.fromEntries(cookieJar));
+			throw new Error(`Login failed: Could not retrieve all required credentials.`);
 		}
-		this.client.log('debug', 'Login Step 2: Got ssecurity and userId successfully');
-
-		// --- Шаг 3: Получение serviceToken ---
-		this.client.log('debug', 'Login Step 3: Fetching serviceToken from location');
-		const step3Response = await fetch(location); // Упростил логику, location должен быть всегда
-		if (!step3Response.ok)
-			throw new Error(`Response step 3 error with status ${step3Response.statusText}`);
-		const cookies = step3Response.headers.get('set-cookie');
-		if (!cookies)
-			throw new Error('Login step 3 failed: No set-cookie header found.');
-		const serviceToken = cookies.match(/serviceToken=([^;]+)/)?.[1];
-		if (!serviceToken) {
-			this.client.log('error', 'Login Step 3 Failed: Could not extract serviceToken from cookies.');
-			throw new Error('Login step 3 failed');
-		}
-		this.client.log('debug', 'Login Step 3: Got serviceToken successfully');
-
-		// --- Завершение: Сохранение учетных данных ---
-		this.client.log('info', `Login successful for user ${userId}`);
 		this.credentials.ssecurity = ssecurity;
 		this.credentials.userId = userId;
 		this.credentials.serviceToken = serviceToken;
 		this.client.emit('login', this.credentials);
+		return {
+			userId, ssecurity, serviceToken,
+			country: this.credentials.country
+		};
 	};
 
 	/**
@@ -243,8 +354,8 @@ export default class Miot {
 			this.client.log('info', 'No serviceToken found, attempting login before request');
 			await this.login();
 		}
-		if (!this.countries.includes(this.credentials.country))
-			throw new Error(`The country ${this.credentials.country} is not support, list supported countries is ${this.countries.join(', ')}`);
+		if (!COUNTRIES.includes(this.credentials.country))
+			throw new Error(`The country ${this.credentials.country} is not support, list supported countries is ${COUNTRIES.join(', ')}`);
 		const params = {
 			data: JSON.stringify(data)
 		};
