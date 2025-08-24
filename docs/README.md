@@ -1,7 +1,5 @@
 # node-xmihome
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 [[RU]](./ru/README.md) | [EN]
 
 This is a monorepo for `node-xmihome` — a set of tools for controlling
@@ -12,12 +10,12 @@ library for developers and a ready-to-use integration for Node-RED.
 
 This repository contains several packages located in the `packages/` directory:
 
-| Package | NPM | Description |
-| --- | --- | --- |
-| [`xmihome`](../packages/node/) | [![npm](https://img.shields.io/npm/v/xmihome.svg)](https://www.npmjs.com/package/xmihome) | The core library for interacting with Xiaomi devices via Cloud, MiIO, and Bluetooth. |
-| [`node-red-contrib-xmihome`](../packages/node-red/) | [![npm](https://img.shields.io/npm/v/node-red-contrib-xmihome.svg)](https://www.npmjs.com/package/node-red-contrib-xmihome) | A set of nodes for easy integration of `xmihome` into Node-RED projects. |
-| [`xmihome-devices`](../packages/devices/) | [![npm](https://img.shields.io/npm/v/xmihome-devices.svg)](https://www.npmjs.com/package/xmihome-devices) | Definitions and specifications for specific device models. |
-| [`xmihome-web`](../packages/web/) | (Private) | A demo web application for controlling devices via Web Bluetooth. |
+| Package                                           | NPM                                                                                                                     | Description                                                                              |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [`xmihome`](../packages/node/)                    | [![npm](https://img.shields.io/npm/v/xmihome.svg)](https://www.npmjs.com/package/xmihome)                                  | The core library for interacting with Xiaomi devices via Cloud, MiIO, and Bluetooth.     |
+| [`node-red-contrib-xmihome`](../packages/node-red/) | [![npm](https://img.shields.io/npm/v/node-red-contrib-xmihome.svg)](https://www.npmjs.com/package/node-red-contrib-xmihome) | A set of nodes for easy integration of `xmihome` into Node-RED projects.             |
+| [`xmihome-devices`](../packages/devices/)         | [![npm](https://img.shields.io/npm/v/xmihome-devices.svg)](https://www.npmjs.com/package/xmihome-devices)                  | Definitions and specifications for specific device models.                               |
+| [`xmihome-web`](../packages/web/)                 | (Private)                                                                                                               | A demo web application for controlling devices via Web Bluetooth.                        |
 
 ## Development Setup
 
@@ -32,14 +30,16 @@ as it correctly handles the workspace dependencies for this project.
     ```
 
 2. **Install dependencies:**
-    This command will install dependencies for all packages and create the necessary symlinks between them.
+    This command will install dependencies for all packages and create the
+    necessary symlinks between them.
 
     ```bash
     bun install
     ```
 
 3. **Build packages:**
-    If any package requires a build step (e.g., `node-red-contrib-xmihome`), you can build all packages at once using:
+    If any package requires a build step (e.g., `node-red-contrib-xmihome`),
+    you can build all packages at once using:
 
     ```bash
     bun run build

@@ -90,7 +90,7 @@ function main() {
 			fi
 			curl_headers=("-H" "Content-Type: application/json")
 			api_url="https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent?key=${GEMINI_API_KEY}"
-			jq_parser_path='.candidates[0].content.parts[0].text'
+			jq_parser_path='(.candidates[0].content.parts | map(.text) | join(""))'
 			request_json=$(echo "${project_context}" | jq -Rs \
 				--arg prompt_content "${prompt_content}" \
 				'{
