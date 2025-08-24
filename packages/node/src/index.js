@@ -5,7 +5,7 @@ import Miot from './miot.js';
 import Bluetooth from './bluetooth.js';
 import { LOG_LEVELS, DEFAULT_LOG_LEVEL, LIB_ID, UUID, COUNTRIES } from './constants.js';
 import { devices } from 'xmihome-devices';
-/** @import { Config as DeviceConfig } from './device.js' */
+/** @import { Config as DeviceConfig, DiscoveredDevice } from './device.js' */
 
 /**
  * @typedef {Object} Credentials
@@ -225,8 +225,8 @@ export default class XiaomiMiHome extends EventEmitter {
 	 * @param {number} [options.timeout=10000] Таймаут для локального поиска в миллисекундах.
 	 * @param {('miio'|'bluetooth'|'miio+bluetooth'|'cloud')} [options.connectionType] Предпочитаемый тип поиска.
 	 * @param {(
-	 *   device: DeviceConfig,
-	 *   devices: DeviceConfig[],
+	 *   device: DiscoveredDevice,
+	 *   devices: DiscoveredDevice[],
 	 *   type: 'miio'|'bluetooth'|'cloud'
 	 * ) => boolean | {include?: boolean, stop?: boolean}} [options.onDeviceFound]
 	 *   Callback-функция, вызываемая для каждого нового уникального устройства. Позволяет фильтровать результаты и досрочно останавливать поиск.
@@ -239,7 +239,7 @@ export default class XiaomiMiHome extends EventEmitter {
 	 *     - Объект `{ include: boolean, stop: boolean }`:
 	 *       - `include: true`: Добавить устройство в итоговый список.
 	 *       - `stop: true`: Немедленно остановить поиск после обработки текущего устройства.
-	 * @returns {Promise<DeviceConfig[]>} Promise, который разрешится массивом объектов найденных устройств.
+	 * @returns {Promise<DiscoveredDevice[]>} Promise, который разрешится массивом объектов найденных устройств.
 	 * @throws {Error} Если запрошен тип 'cloud', но учетные данные не предоставлены, или если указан неверный `connectionType`.
 	 */
 	async getDevices({
@@ -276,7 +276,7 @@ export default class XiaomiMiHome extends EventEmitter {
 	/**
 	 * Получает список устройств из Xiaomi Cloud.
 	 * @param {Function|null} onDeviceFound - Коллбэк от пользователя.
-	 * @returns {Promise<DeviceConfig[]>} Promise с массивом устройств из облака.
+	 * @returns {Promise<DiscoveredDevice[]>} Promise с массивом устройств из облака.
 	 * @throws {Error} Перебрасывает ошибку от API в случае неудачного запроса.
 	 */
 	async #getCloudDevices(onDeviceFound) {
@@ -312,7 +312,7 @@ export default class XiaomiMiHome extends EventEmitter {
 	 * @param {'miio'|'bluetooth'|'miio+bluetooth'} connectionType
 	 * @param {number} timeout
 	 * @param {Function|null} onDeviceFound - Коллбэк от пользователя.
-	 * @returns {Promise<DeviceConfig[]>} Promise с массивом найденных локально устройств.
+	 * @returns {Promise<DiscoveredDevice[]>} Promise с массивом найденных локально устройств.
 	 */
 	async #getLocalDevices(connectionType, timeout, onDeviceFound) {
 		const devices = [];
@@ -328,7 +328,7 @@ export default class XiaomiMiHome extends EventEmitter {
 			discoveryResolve();
 		};
 		const handleDeviceFound = (
-			/** @type {DeviceConfig} */ device,
+			/** @type {DiscoveredDevice} */ device,
 			/** @type {'miio' | 'bluetooth'} */ type
 		) => {
 			if (discoveryStopped)
@@ -360,6 +360,7 @@ export default class XiaomiMiHome extends EventEmitter {
 						address: dev.address,
 						token: dev.token,
 						model: (model?.split('.').length >= 3) ? model : undefined,
+						isOnline: true
 					}, ['isOnline']), 'miio');
 				};
 				browser.on('available', miioListener);
@@ -379,7 +380,8 @@ export default class XiaomiMiHome extends EventEmitter {
 					handleDeviceFound(mergePreferDefined(devConfig, {
 						name: dev.name,
 						mac: dev.mac,
-						model: devModels?.[0]
+						model: devModels?.[0],
+						isOnline: true
 					}, ['isOnline']), 'bluetooth');
 				};
 				try {
@@ -417,8 +419,8 @@ export default class XiaomiMiHome extends EventEmitter {
 
 	/**
 	 * Обрабатывает найденное устройство, применяя коллбэк onDeviceFound.
-	 * @param {DeviceConfig} device - Найденное устройство.
-	 * @param {DeviceConfig[]} devices - Массив уже добавленных устройств.
+	 * @param {DiscoveredDevice} device - Найденное устройство.
+	 * @param {DiscoveredDevice[]} devices - Массив уже добавленных устройств.
 	 * @param {'miio'|'bluetooth'|'cloud'} type - Тип обнаружения.
 	 * @param {Function|null} onDeviceFound - Коллбэк от пользователя.
 	 * @returns {boolean} - `true`, если поиск следует остановить, иначе `false`.

@@ -16,6 +16,7 @@ import {
  * @property {string} [model] Модель устройства. Если не указана, будет попытаться определиться автоматически.
  * @property {string} [name] Имя устройства (для удобства).
  */
+/** @typedef {Config & { isOnline?: boolean }} DiscoveredDevice */
 
 /**
  * @typedef {{
