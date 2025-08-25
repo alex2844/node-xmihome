@@ -3,33 +3,28 @@
 import { input, password, select } from '@inquirer/prompts';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import path from 'path';
-import { homedir } from 'os';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import XiaomiMiHome from '../src/index.js';
+import { CREDENTIALS_FILE, DEVICE_CACHE_FILE, CLOUD_DEVICE_LIST_FILE, CONFIG_DIR } from '../src/paths.js';
 import { COUNTRIES, CACHE_TTL } from '../src/constants.js';
 /** @import { Credentials } from '../src/index.js' */
 /** @import { DiscoveredDevice } from '../src/device.js' */
 /** @import { ArgumentsCamelCase } from 'yargs' */
 
-const CONFIG_DIR = path.join(homedir(), '.config', 'xmihome');
-const CREDENTIALS_FILE = path.join(CONFIG_DIR, 'credentials.json');
-const DEVICE_CACHE_FILE = path.join(CONFIG_DIR, 'device_cache.json');
-const CLOUD_DEVICE_LIST_FILE = path.join(CONFIG_DIR, 'cloud_device_list.json');
 const CONNECTION_TYPES = /** @type {const} */ (['all', 'miio', 'bluetooth', 'cloud']);
 
 /**
  * @typedef {object} LoginCommandArgs
- * @property {string} username
- * @property {string} password
- * @property {typeof COUNTRIES[number]} country
+ * @property {string} [username]
+ * @property {string} [password]
+ * @property {typeof COUNTRIES[number]} [country]
  * @property {boolean} [verbose]
  */
 
 /**
  * @typedef {object} DevicesCommandArgs
- * @property {typeof CONNECTION_TYPES[number]} type
- * @property {boolean} force
+ * @property {typeof CONNECTION_TYPES[number]} [type]
+ * @property {boolean} [force]
  * @property {boolean} [verbose]
  */
 
@@ -100,6 +95,26 @@ const formatTable = (/** @type {DiscoveredDevice[]} */ devices) => {
 };
 
 const handleLoginCommand = async (/** @type {LoginCommandArgs} */ argv) => {
+	try {
+		if (!argv.username)
+			argv.username = await input({
+				message: 'Username (Email/Phone/ID)',
+				required: true
+			});
+		if (!argv.password)
+			argv.password = await password({
+				message: 'Password',
+				validate: v => !!v
+			});
+		if (!argv.country)
+			argv.country = await select({
+				message: 'Country Code',
+				choices: COUNTRIES
+			});
+	} catch (err) {
+		console.error(err.message);
+		process.exit(1);
+	}
 	const logLevel = argv.verbose ? 'debug' : 'none';
 	const client = new XiaomiMiHome({ credentials: argv, logLevel });
 	const handlers = {
@@ -121,22 +136,18 @@ const handleLoginCommand = async (/** @type {LoginCommandArgs} */ argv) => {
 		return credentials;
 	} catch (error) {
 		console.error(`\n❌ Login failed: ${error.message}`);
-		return null;
+		process.exit(1);
 	}
 };
 
 const handleDevicesCommand = async (/** @type {DevicesCommandArgs} */ argv) => {
-	const { force, type } = argv;
-	const logLevel = argv.verbose ? 'debug' : 'none';
+	const { force, type, verbose } = argv;
+	const logLevel = verbose ? 'debug' : 'none';
 	let credentials = await loadCredentials();
 	const devices = await loadCloudDeviceList() || [];
 	if ((type === 'cloud' || type === 'all') && !credentials) {
 		console.log('Cloud device list requires authentication.');
-		credentials = await handleLoginCommand();
-		if (!credentials) {
-			console.log('Aborting: login is required for cloud-related actions.');
-			return;
-		}
+		credentials = await handleLoginCommand({ verbose });
 	}
 	if (!force) {
 		const cachedDevices = await loadDeviceCache(type);
@@ -174,6 +185,7 @@ const handleDevicesCommand = async (/** @type {DevicesCommandArgs} */ argv) => {
 		formatTable(finalDevices);
 	} catch (error) {
 		console.error(`\n❌ Error fetching devices: ${error.message}`);
+		process.exit(1);
 	} finally {
 		await client.destroy();
 	}
@@ -202,26 +214,6 @@ yargs(hideBin(process.argv))
 				});
 		},
 		async (/** @type {ArgumentsCamelCase<LoginCommandArgs>} */ argv) => {
-			try {
-				if (!argv.username)
-					argv.username = await input({
-						message: 'Username (Email/Phone/ID)',
-						required: true
-					});
-				if (!argv.password)
-					argv.password = await password({
-						message: 'Password',
-						validate: v => !!v
-					});
-				if (!argv.country)
-					argv.country = await select({
-						message: 'Country Code',
-						choices: COUNTRIES
-					});
-			} catch (err) {
-				console.log(err.message);
-				return;
-			}
 			await handleLoginCommand(argv);
 		}
 	)
@@ -253,6 +245,7 @@ yargs(hideBin(process.argv))
 	.completion('completion', 'Generate completion script')
 	.demandCommand(1, '')
 	.strict()
+	.showHelpOnFail(false, 'Specify --help for available options')
 	.help().alias('h', 'help')
 	.version().alias('v', 'version')
 	.parse();
