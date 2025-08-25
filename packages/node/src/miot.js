@@ -1,6 +1,8 @@
-import crypto from 'crypto';
 import miio from 'mijia-io';
+import crypto from 'crypto';
+import { readFile } from 'fs/promises';
 import { COUNTRIES } from './constants.js';
+import { expandPath } from './paths.js';
 /** @import { Credentials, XiaomiMiHome } from './index.js' */
 
 /**
@@ -215,13 +217,35 @@ export default class Miot {
 	};
 
 	/**
+	 * Загружает учетные данные из файла.
+	 * @returns {Promise<Credentials|null>}
+	 */
+	async #loadCredentials() {
+		try {
+			const data = await readFile(expandPath(this.client.config.credentialsFile), 'utf-8');
+			return JSON.parse(data);
+		} catch (error) {
+			return null;
+		}
+	};
+
+	/**
 	 * Выполняет вход в аккаунт Xiaomi и возвращает учетные данные.
 	 * @param {object} [handlers] - Объект с колбэками для обработки интерактивных шагов.
 	 * @param {(url: string) => Promise<string>} [handlers.on2fa] - Колбэк для получения 2FA тикета.
-	 * @returns {Promise<{userId: number, ssecurity: string, serviceToken: string, country: (typeof COUNTRIES)[number]}>} - Объект с полученными учетными данными.
+	 * @returns {Promise<Omit<Credentials, 'username'|'password'>>} - Объект с полученными учетными данными.
 	 * @throws {Error} Если не удалось выполнить вход на каком-либо из этапов.
 	 */
 	async login(handlers) {
+		if (this.client.config.credentialsFile) {
+			const credentials = await this.#loadCredentials();
+			this.client.config.credentials = { ...credentials, ...this.credentials };
+		}
+		if (this.credentials.userId && this.credentials.ssecurity && this.credentials.serviceToken && this.credentials.country) {
+			this.client.log('info', 'Credentials (tokens) already available, skipping login.');
+			const { username, password, ...safeCredentials } = this.credentials;
+			return safeCredentials;
+		}
 		this.client.log('info', `Attempting login for user: ${this.credentials.username}`);
 		if (!this.credentials.username)
 			throw new Error('username empty');
@@ -311,9 +335,9 @@ export default class Miot {
 				}
 				if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
 					currentUrl = new URL(response.headers.get('location'), currentUrl).toString();
-				} else { 
+				} else {
 					this.client.log('debug', `[DEBUG] REDIRECT LOOP ${i}: End of redirect chain.`);
-					break; 
+					break;
 				}
 			}
 			userId = getCookieValue('userId');

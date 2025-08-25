@@ -4,6 +4,7 @@ import Device from './device.js';
 import Miot from './miot.js';
 import Bluetooth from './bluetooth.js';
 import { LOG_LEVELS, DEFAULT_LOG_LEVEL, LIB_ID, UUID, COUNTRIES } from './constants.js';
+import { CREDENTIALS_FILE } from './paths.js';
 import { devices } from 'xmihome-devices';
 /** @import { Config as DeviceConfig, DiscoveredDevice } from './device.js' */
 
@@ -20,6 +21,7 @@ import { devices } from 'xmihome-devices';
 /**
  * @typedef {Object} Config
  * @property {Credentials} [credentials] Учетные данные для облачного подключения.
+ * @property {string} [credentialsFile] - Путь к файлу с учетными данными.
  * @property {('miio'|'bluetooth'|'cloud')} [connectionType] Тип подключения по умолчанию.
  * @property {DeviceConfig[]} [devices] Массив устройств для поиска и подключения.
  * @property {('none'|'error'|'warn'|'info'|'debug')} [logLevel='none'] Уровень логирования через console. По умолчанию 'none'.
@@ -248,7 +250,7 @@ export default class XiaomiMiHome extends EventEmitter {
 		onDeviceFound = null
 	} = {}) {
 		const { username, password, userId, ssecurity, serviceToken } = this.config.credentials || {};
-		const hasCredentials = !!((username && password) || (userId && ssecurity && serviceToken));
+		const hasCredentials = !!((username && password) || (userId && ssecurity && serviceToken) || this.config.credentialsFile);
 		const discoveryStrategy = connectionType || (hasCredentials ? 'cloud' : 'miio+bluetooth');
 		this.log('info', `Starting device discovery using strategy: "${discoveryStrategy}"`);
 		switch (discoveryStrategy) {
@@ -514,6 +516,6 @@ export function createFallbackProxy(target, fallback) {
 	return /** @type {T & F} */ (proxy);
 };
 
-export { XiaomiMiHome, Device, Miot, Bluetooth };
+export { XiaomiMiHome, Device, Miot, Bluetooth, CREDENTIALS_FILE };
 
 Device.registerModels(devices);
