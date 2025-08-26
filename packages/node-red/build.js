@@ -66,7 +66,10 @@ async function buildNode(nodeName) {
 		const buildResult = await Bun.build({
 			entrypoints: [uiSrc],
 			target: 'browser',
-			minify: true
+			minify: {
+				syntax: true,
+				whitespace: true
+			}
 		});
 		if (buildResult.success) {
 			const [artifact] = buildResult.outputs;
