@@ -1,11 +1,12 @@
-/** @import { EditorRED, EditorNodePropertiesDef } from 'node-red' */
+/** @import { EditorRED, EditorNodePropertiesDef, EditorNodeInstance } from 'node-red' */
+/** @import { Config as Device } from 'xmihome/device.js' */
 /** @import { Config } from './runtime.js' */
 /** @typedef {Config & { name: string }} ConfigDef */
 
-var /** @type {EditorRED} */ RED = window['RED'];
+let /** @type {EditorRED} */ RED = window['RED'];
+let /** @type {EditorNodeInstance} */ node = null;
 
 const CACHE_TTL = 60 * 1000;
-let node = null;
 let lastCacheTimestamp = 0;
 let discoveredDevicesCache = [];
 
@@ -17,7 +18,7 @@ function validateDevice() {
 	return false;
 };
 
-function getIdType(device) {
+function getIdType(/** @type {Device} */ device) {
 	if (device.address && device.token)
 		return 'miio';
 	else if (device.mac && device.model)
@@ -30,7 +31,7 @@ function getIdType(device) {
 		return 'bluetooth';
 };
 
-function formatDeviceLabel(device) {
+function formatDeviceLabel(/** @type {Device} */ device) {
 	let label = device.name || device.model || device.mac || device.address || device.id || 'Unknown Device';
 	let details = [];
 	if (device.model && (label !== device.model))
@@ -46,7 +47,7 @@ function formatDeviceLabel(device) {
 	return label;
 };
 
-function fetchDiscoveredDevices(event) {
+function fetchDiscoveredDevices(/** @type {JQuery.ClickEvent<HTMLElement, null>} */ event) {
 	const msg = $('#discovered-msg');
 	const clientId = ($('#node-input-settings').val().toString() || '').replace('_ADD_', '');
 	if (!clientId) {
@@ -74,7 +75,7 @@ function fetchDiscoveredDevices(event) {
 		});
 };
 
-function devicesDropdown(devices) {
+function devicesDropdown(/** @type {Device[]} */ devices) {
 	const select = $('#node-input-discovered-device');
 	select.empty();
 	if (!devices || (devices.length === 0))
@@ -94,15 +95,15 @@ function devicesDropdown(devices) {
 	select.val('');
 };
 
-function deviceParse(input) {
-	const device = JSON.parse(input || $('#node-input-device').typedInput('value') || '{}');
+function deviceParse(/** @type {string} */ input) {
+	const /** @type {Device} */ device = JSON.parse(input || $('#node-input-device').typedInput('value') || '{}');
 	$('.device-config input').val('');
 	Object.entries(device).forEach(([key, value]) => $("#node-input-device-" + key).val(value));
 	onchangeidtype(null, device);
 	return device;
 };
 
-function onchangeidtype(_event, device) {
+function onchangeidtype(/** @type {JQuery.ChangeEvent<HTMLElement, null>} */ _event, /** @type {Device} */ device) {
 	const input = $('#node-input-deviceIdType');
 	if (device)
 		input.val(getIdType(device));
@@ -115,7 +116,7 @@ function onchangeidtype(_event, device) {
 	$('#node-button-open-model').prop('disabled', value === 'bluetooth');
 };
 
-function onchangedevice(event) {
+function onchangedevice(/** @type {JQuery.ChangeEvent<HTMLElement, null>} */ event) {
 	const input = $('#node-input-device');
 	switch (event.target.id) {
 		case 'node-input-deviceSource': {
@@ -154,7 +155,7 @@ function onchangedevice(event) {
 		case 'node-input-discovered-device': {
 			input.typedInput('type', 'json');
 			input.typedInput('value', event.target.value);
-			$('#node-input-deviceSource').val('input').change();
+			$('#node-input-deviceSource').val('input').trigger('change');
 			break;
 		};
 		default: {
@@ -168,16 +169,16 @@ function onchangedevice(event) {
 	};
 };
 
-function onchangeaction(event) {
-	const value = event.target.value;
+function onchangeaction() {
+	const value = $(this).val();
 	$('#node-config-row-property').toggle(value !== 'getProperties');
 	$('#node-config-row-value').toggle(['setProperty', 'callAction', 'callMethod'].includes(value));
 };
 
-function onchangeproperty(event) {
+function onchangeproperty() {
 	const input = $('#node-input-property');
 	const container = $('#node-property-typedinput-container');
-	switch (event.target.value) {
+	switch ($(this).val()) {
 		case 'input': {
 			container.show();
 			input.typedInput('type', 'str');
@@ -193,7 +194,7 @@ function onchangeproperty(event) {
 	};
 };
 
-function onclickmodel(_event) {
+function onclickmodel() {
 	const value = $('#node-input-device-model').val().toString().trim();
 	let url = "https://home.miot-spec.com/";
 	if (value !== '')
@@ -249,14 +250,12 @@ RED.nodes.registerType('xmihome-device', {
 		if (this.deviceType === 'json')
 			deviceParse(this.device);
 		else if ((this.deviceType === 'msg') && (this.device === 'device'))
-			$('#node-input-deviceSource').val('msg').change();
+			$('#node-input-deviceSource').val('msg').trigger('change');
 		$('#node-input-deviceIdType').on('change', onchangeidtype);
 		$('#node-button-open-model').on('click', onclickmodel);
-
 		$('#node-input-action').on('change', onchangeaction);
-
 		$('#node-input-propertySource').on('change', onchangeproperty);
 		if ((this.propertyType === 'msg') && (this.property === 'property'))
-			$('#node-input-propertySource').val('msg').change();
+			$('#node-input-propertySource').val('msg').trigger('change');
 	}
 });

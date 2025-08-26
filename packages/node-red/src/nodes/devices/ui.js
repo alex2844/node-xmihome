@@ -2,7 +2,7 @@
 /** @import { Config } from './runtime.js' */
 /** @typedef {Config & { name: string }} ConfigDef */
 
-var /** @type {EditorRED} */ RED = window['RED'];
+let /** @type {EditorRED} */ RED = window['RED'];
 
 RED.nodes.registerType('xmihome-devices', {
 	category: 'Xiaomi MiHome',
