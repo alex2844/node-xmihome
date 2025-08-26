@@ -9,30 +9,46 @@
 <fieldset>
 	<legend data-i18n="config.label.authentication"></legend>
 	<div class="form-row">
-		<label for="node-config-input-username"><i class="fa fa-user"></i> <span data-i18n="config.label.username"></span></label>
-		<input type="text" id="node-config-input-username" data-i18n="[placeholder]config.placeholder.username" />
-	</div>
-	<div class="form-row">
-		<label for="node-config-input-password"><i class="fa fa-key"></i> <span data-i18n="config.label.password"></span></label>
-		<input type="password" id="node-config-input-password" />
-	</div>
-	<div class="form-row">
-		<label for="node-config-input-country"><i class="fa fa-globe"></i> <span data-i18n="config.label.country"></span></label>
-		<select id="node-config-input-country" style="width: 70%">
-			<option value='sg'>sg</option>
-			<option value='cn'>cn</option>
-			<option value='ru'>ru</option>
-			<option value='us'>us</option>
-			<option value='tw'>tw</option>
-			<option value='de'>de</option>
+		<label for="node-config-input-authSource"><i class="fa fa-cogs"></i> <span data-i18n="config.label.authSource"></span></label>
+		<select id="node-config-input-authSource" style="width: 70%;">
+			<option value="manual" data-i18n="config.label.sourceManual"></option>
+			<option value="file" data-i18n="config.label.sourceFile"></option>
 		</select>
 	</div>
-	<div class="form-row">
-		<label>&nbsp;</label>
-		<button class="red-ui-button" id="node-config-button-login" style="width: 70%;">
-			<i class="fa fa-sign-in"></i>
-			<span data-i18n="config.label.login"></span>
-		</button>
+	<div id="auth-manual-group">
+		<div class="form-row">
+			<label for="node-config-input-username"><i class="fa fa-user"></i> <span data-i18n="config.label.username"></span></label>
+			<input type="text" id="node-config-input-username" data-i18n="[placeholder]config.placeholder.username" />
+		</div>
+		<div class="form-row">
+			<label for="node-config-input-password"><i class="fa fa-key"></i> <span data-i18n="config.label.password"></span></label>
+			<input type="password" id="node-config-input-password" />
+		</div>
+		<div class="form-row">
+			<label for="node-config-input-country"><i class="fa fa-globe"></i> <span data-i18n="config.label.country"></span></label>
+			<select id="node-config-input-country" style="width: 70%">
+				<option value='sg'>sg</option>
+				<option value='cn'>cn</option>
+				<option value='ru'>ru</option>
+				<option value='us'>us</option>
+				<option value='tw'>tw</option>
+				<option value='de'>de</option>
+			</select>
+		</div>
+		<div class="form-row">
+			<label>&nbsp;</label>
+			<button class="red-ui-button" id="node-config-button-login" style="width: 70%;">
+				<i class="fa fa-sign-in"></i>
+				<span data-i18n="config.label.login"></span>
+			</button>
+		</div>
+	</div>
+	<div id="auth-file-group">
+		<div class="form-row">
+			<label for="node-config-input-credentialsFile"><i class="fa fa-file-text-o"></i> <span data-i18n="config.label.credentialsFile"></span></label>
+			<input type="text" id="node-config-input-credentialsFile" data-i18n="[placeholder]config.placeholder.credentialsFile" style="width: 70%;" />
+		</div>
+		<div class="form-tips" data-i18n="[html]config.tip.credentialsFile"></div>
 	</div>
 	<fieldset>
 		<legend data-i18n="config.label.defaults"></legend>

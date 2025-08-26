@@ -13,11 +13,19 @@
 			"connAuto": "Авто",
 			"connCloud": "Облако",
 			"connMiio": "MiIO",
-			"connBluetooth": "Bluetooth"
+			"connBluetooth": "Bluetooth",
+			"authSource": "Источник учетных данных",
+			"credentialsFile": "Путь к файлу",
+			"sourceManual": "Ввести вручную",
+			"sourceFile": "Использовать файл CLI"
+		},
+		"tip": {
+			"credentialsFile": "Этот файл создается командой <code>xmihome login</code>."
 		},
 		"placeholder": {
 			"name": "Имя",
-			"username": "Email / Phone / Xiaomi ID"
+			"username": "Email / Phone / Xiaomi ID",
+			"credentialsFile": "~/.config/xmihome/credentials.json"
 		},
 		"dialog": {
 			"errorLoginFailed": "Ошибка входа",

@@ -1,9 +1,11 @@
-/** @import { EditorRED, EditorNodePropertiesDef, EditorNodeCredentials } from 'node-red' */
+/** @import { EditorRED, EditorNodePropertiesDef, EditorNodeCredentials, EditorNodeCredential, EditorNodeInstance } from 'node-red' */
 /** @import { Credentials } from 'xmihome' */
 /** @import { Config } from './runtime.js' */
 /** @typedef {Config & { name: string; credentialsValid: boolean }} ConfigDef */
+/** @typedef {EditorNodeCredential & { validate: () => boolean }} CredentialDef */
 
-var /** @type {EditorRED} */ RED = window['RED'];
+let /** @type {EditorRED} */ RED = window['RED'];
+let /** @type {EditorNodeInstance} */ node = null;
 
 function validate() {
 	const isUsername = !!$('#node-config-input-username').val();
@@ -32,27 +34,37 @@ function enableDoneButton() {
 	doneButton.prop('disabled', false).removeClass('disabled');
 };
 
+function toggleAuthSource() {
+	const manualGroup = $('#auth-manual-group');
+	const fileGroup = $('#auth-file-group');
+	if ($(this).val() === 'file') {
+		manualGroup.hide();
+		fileGroup.show();
+	} else {
+		manualGroup.show();
+		fileGroup.hide();
+	}
+};
+
 RED.nodes.registerType('xmihome-config', {
 	category: 'config',
 	/** @type {EditorNodePropertiesDef<ConfigDef>} */ defaults: {
 		name: { value: '' },
+		credentialsFile: { value: '' },
 		debug: { value: false },
 		connectionType: { value: 'auto' },
-		// Фиктивное поле для валидации credentials
 		credentialsValid: {
 			value: true,
 			validate
 		}
 	},
 	/** @type {EditorNodeCredentials<Credentials>} */ credentials: {
-		username: { 
+		/** @type {CredentialDef} */ username: {
 			type: 'text',
-			// @ts-ignore
 			validate
 		},
-		password: { 
+		/** @type {CredentialDef} */ password: {
 			type: 'password',
-			// @ts-ignore
 			validate
 		},
 		country: { type: 'text' },
@@ -64,9 +76,11 @@ RED.nodes.registerType('xmihome-config', {
 		return this.name || 'XiaomiMiHome';
 	},
 	oneditprepare: function () {
-		const node = this;
+		node = this;
 		const loginButton = $('#node-config-button-login');
+		const credsFile = $('#node-config-input-credentialsFile');
 		$('#node-config-input-username, #node-config-input-password').on('input keyup change', updateLoginButtonState);
+		$('#node-config-input-authSource').on('change', toggleAuthSource).val(credsFile.val() ? 'file' : 'manual').trigger('change');
 		loginButton.on('click', function (e) {
 			e.preventDefault();
 			const username = $('#node-config-input-username').val();
@@ -106,7 +120,7 @@ RED.nodes.registerType('xmihome-config', {
 											type: 'POST',
 											contentType: 'application/json',
 											data: JSON.stringify({ stateToken: data.stateToken, ticket: ticket }),
-											success: function(ticketData) {
+											success: function (_) {
 												enableDoneButton();
 											},
 											error: function (jqXHR) {

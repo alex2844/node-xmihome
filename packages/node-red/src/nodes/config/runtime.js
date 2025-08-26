@@ -24,7 +24,8 @@ const pending2faResolvers = new Map();
 /**
  * @typedef {{
  *   debug: boolean;
-	 connectionType: ('auto'|'cloud'|'miio'|'bluetooth');
+ *   credentialsFile: string;
+ *   connectionType: ('auto'|'cloud'|'miio'|'bluetooth');
  * }} Config
  */
 /** @typedef {NodeDef & Config} ConfigDef */
@@ -102,8 +103,6 @@ export class ConfigNode {
 		this.#node = node;
 		this.#config = config;
 		this.#RED = RED;
-		console.log('config', node);
-
 		this.endpoint['devices'] = `/xmihome/${this.#node.id}/devices`;
 		this.endpoint['auth'] = `/xmihome/${this.#node.id}/auth`;
 		this.endpoint['auth_ticket'] = `/xmihome/${this.#node.id}/auth/submit_ticket`;
@@ -120,6 +119,7 @@ export class ConfigNode {
 		if (!this.#client)
 			this.#client = new XiaomiMiHome({
 				credentials: this.#node.credentials,
+				credentialsFile: this.#config.credentialsFile,
 				connectionType: this.#config.connectionType === 'auto' ? null : this.#config.connectionType,
 				logLevel: this.#config.debug ? 'debug' : 'none'
 			});
