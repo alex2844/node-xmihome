@@ -97,5 +97,17 @@ module.exports = {
 			audit: false
 		}
 	},
+	editorTheme: {
+		tours: false
+	},
+	externalModules: {
+		palette: {
+			allowInstall: false
+		}
+	},
+	telemetry: {
+		enabled: false,
+		updateNotification: false
+	},
 	credentialSecret: false
 };
