@@ -200,7 +200,7 @@ Sets the value of a single property.
 
 - `Promise<void>`
 
-### `callAction(action, params)`
+### `callAction(action, value)`
 
 Calls a specific action on the device. This is used for operations that
 don't fit the get/set property model, such as starting a cleaning cycle on
@@ -211,7 +211,7 @@ a vacuum.
 | Name     | Type              | Description                                             |
 | -------- | ----------------- | ------------------------------------------------------- |
 | `action` | `string \| object` | The name of the action or the action definition object. |
-| `params` | `any[]`           | (Optional) An array of parameters for the action.       |
+| `value`  | `any[]`           | (Optional) An array of parameters for the action.       |
 
 **Returns:**
 

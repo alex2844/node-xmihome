@@ -18,6 +18,7 @@ Creates a new instance of the `XiaomiMiHome` client.
 | `config.credentials.username` | `string`   | Xiaomi account username.                                                                                 |
 | `config.credentials.password` | `string`   | Xiaomi account password.                                                                                 |
 | `config.credentials.country` | `string`   | Xiaomi account region (e.g., `ru`, `cn`, `us`).                                                          |
+| `config.credentialsFile` | `string`   | (Optional) Path to a JSON file with credentials.                                                         |
 | `config.connectionType`| `string`   | (Optional) The default connection type to use for device discovery and connection (`'cloud'`, `'miio'`, `'bluetooth'`). |
 | `config.devices`       | `object[]` | (Optional) An array of predefined device configurations.                                                 |
 | `config.logLevel`      | `string`   | (Optional) The logging level for the console output (`'none'`, `'error'`, `'warn'`, `'info'`, `'debug'`). Default: `'none'`. |
@@ -49,7 +50,7 @@ Discovers available devices based on the specified strategy.
 | --------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `options`             | `object`   | (Optional) Discovery options.                                                                                                                                                                                                        |
 | `options.timeout`     | `number`   | (Optional) Timeout for local (MiIO/Bluetooth) discovery in milliseconds. Default: `10000`.                                                                                                                                            |
-| `options.connectionType` | `string`   | (Optional) The discovery method to use (`'cloud'`, `'miio'`, `'bluetooth'`). Overrides the default from the constructor.                                                                                                              |
+| `options.connectionType` | `string`   | (Optional) The discovery method to use (`'cloud'`, `'miio'`, `'bluetooth'`, `'miio+bluetooth'`). Overrides the default from the constructor.                                                                                          |
 | `options.onDeviceFound` | `function` | (Optional) A callback function to filter and control the discovery process. It receives `(device, devices, type)` and can return `true` to include, `false` to skip, or an object `{ include?: boolean, stop?: boolean }` to control the flow. |
 
 **Returns:**

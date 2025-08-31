@@ -40,7 +40,8 @@ Starts scanning for Bluetooth LE devices.
 
 **Returns:**
 
-- `Promise<void>`
+- `Promise<boolean>`: A promise that resolves to `true` if discovery was
+  successfully started.
 
 ### `stopDiscovery()`
 
@@ -57,9 +58,9 @@ If the device is not found in the cache, it will perform a discovery scan.
 
 **Parameters:**
 
-| Name  | Type     | Description                     |
-| ----- | -------- | ------------------------------- |
-| `mac` | `string` | The MAC address of the device.  |
+| Name  | Type     | Description                    |
+| ----- | -------- | ------------------------------ |
+| `mac` | `string` | The MAC address of the device. |
 
 **Returns:**
 
