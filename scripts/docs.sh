@@ -13,10 +13,15 @@ readonly MODEL_ID="${MODEL_ID:-gemini-2.5-pro}"
 # -- ФАЙЛЫ И ИСКЛЮЧЕНИЯ --
 readonly PROMPT_FILE="docs/prompts/docs.md"
 readonly OUTPUT_SCRIPT="scripts/docs_apply.sh"
-readonly EXCLUDE_FILES_PATTERNS=("LICENSE" ".gitignore" "${PROMPT_FILE}" "${OUTPUT_SCRIPT}" "${0#./}")
+readonly EXCLUDE_FILES_PATTERNS=(
+	"LICENSE" ".gitignore" ".github/*" "scripts/*"
+	"*jsconfig.json" "*types.d.ts" "*build.js"
+	"docs/CONTRIBUTING.md" "*examples/*" "*settings.cjs" "*.css"
+	"${PROMPT_FILE}" "${OUTPUT_SCRIPT}" "${0#./}"
+)
 
 function error() {
-	echo "❌ Ошибка: $1" >&2
+	echo -e "❌ Ошибка: $1" >&2
 	exit 1
 }
 
@@ -53,7 +58,15 @@ function process_file() {
 }
 
 function main() {
-	echo "🔍 Работаем в корне проекта: ${PWD}"
+	local package="${1:-}"
+	echo "🔍 Работаем в корне проекта: '${PWD}'"
+	if [[ -n "${package}" ]]; then
+		if [[ ! -d "packages/${package}" ]]; then
+			error "Пакет 'packages/${package}/' не найден. Проверьте правильность имени."
+		fi
+		echo "🎯 Работаем в режиме одного пакета: 'packages/${package}'"
+	fi
+
 	check_deps
 
 	if [[ ! -f "${PROMPT_FILE}" ]]; then
@@ -72,6 +85,9 @@ function main() {
 				break
 			fi
 		done
+		if [[ -n "${package}" ]] && [[ "${relative_path}" != "packages/${package}/"* ]]; then
+			should_skip=true
+		fi
 		[[ "${should_skip}" == true ]] && continue
 		project_context+="$(process_file "${relative_path}")"
 	done < <(list_project_files | sort)
@@ -133,7 +149,7 @@ function main() {
 	
 	echo "🚀 Отправляем запрос в ${API_PROVIDER}... Это может занять некоторое время."
 	local response
-	if ! response=$(echo "${request_json}" | curl -s -X POST "${curl_headers[@]}" --data-binary @- "${api_url}" 2>&1); then
+	if ! response=$(echo "${request_json}" | curl -s -X POST --connect-timeout 15 --max-time 180 "${curl_headers[@]}" --data-binary @- "${api_url}" 2>&1); then
 		error "Запрос к ${API_PROVIDER} API не удался. Ответ сервера:\n${response}"
 	fi
 	if ! echo "${response}" | jq -e "${jq_parser_path}" > /dev/null; then
