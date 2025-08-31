@@ -15,8 +15,8 @@ available to `findModel` and `create`.
 
 **Parameters:**
 
-| Name     | Type     | Description                                           |
-| -------- | -------- | ----------------------------------------------------- |
+| Name     | Type     | Description                                                  |
+| -------- | -------- | ------------------------------------------------------------ |
 | `models` | `object` | An object where keys are models and values are device classes. |
 
 ### `getModels()`
@@ -33,9 +33,9 @@ Finds the appropriate class for a device based on its `model` or `name`.
 
 **Parameters:**
 
-| Name     | Type     | Description                       |
-| -------- | -------- | --------------------------------- |
-| `device` | `object` | The device configuration object.  |
+| Name     | Type     | Description                      |
+| -------- | -------- | -------------------------------- |
+| `device` | `object` | The device configuration object. |
 
 **Returns:**
 
@@ -49,10 +49,10 @@ attempts to load the specification from the MiOT cloud.
 
 **Parameters:**
 
-| Name     | Type           | Description                     |
-| -------- | -------------- | ------------------------------- |
+| Name     | Type           | Description                    |
+| -------- | -------------- | ------------------------------ |
 | `device` | `object`       | The device configuration object. |
-| `client` | `XiaomiMiHome` | The main client instance.       |
+| `client` | `XiaomiMiHome` | The main client instance.      |
 
 **Returns:**
 
@@ -65,9 +65,9 @@ configuration.
 
 **Parameters:**
 
-| Name     | Type     | Description                       |
-| -------- | -------- | --------------------------------- |
-| `device` | `object` | The device configuration object.  |
+| Name     | Type     | Description                      |
+| -------- | -------- | -------------------------------- |
+| `device` | `object` | The device configuration object. |
 
 **Returns:**
 
@@ -80,14 +80,15 @@ based on the available fields in the device configuration.
 
 **Parameters:**
 
-| Name          | Type     | Description                    |
-| ------------- | -------- | ------------------------------ |
+| Name          | Type     | Description                   |
+| ------------- | -------- | ----------------------------- |
 | `device`      | `object` | The device configuration object. |
-| `credentials` | `object` | (Optional) Cloud credentials.  |
+| `credentials` | `object` | (Optional) Cloud credentials. |
 
 **Returns:**
 
-- `'miio' \| 'bluetooth' \| 'cloud' \| undefined`: A string with the connection type.
+- `'miio' \| 'bluetooth' \| 'cloud' \| undefined`: A string with the connection
+  type.
 
 ## Properties
 
@@ -98,16 +99,17 @@ based on the available fields in the device configuration.
 | `isConnecting`   | `boolean` | `true` if the device is in the process of initial connection.  |
 | `isReconnecting` | `boolean` | `true` if the device is in the process of automatic reconnection. |
 | `properties`     | `object`  | An object containing the definitions of all device properties. |
+| `actions`        | `object`  | An object containing the definitions of all device actions.    |
 
 ## Events
 
 Instances of the `Device` class emit the following events:
 
-| Event            | Payload                            | Description                                                  |
-| ---------------- | ---------------------------------- | ------------------------------------------------------------ |
-| `connected`      | `string` (connectionType)        | Emitted when a connection to the device is successfully established. |
-| `disconnect`     | -                                  | Emitted when the device is disconnected, either by calling `disconnect()` or externally. |
-| `reconnecting`   | `{ reason: string }`               | Emitted when an automatic reconnection process starts after an unexpected disconnect. |
+| Event            | Payload                                | Description                                                  |
+| ---------------- | -------------------------------------- | ------------------------------------------------------------ |
+| `connected`      | `string` (connectionType)            | Emitted when a connection to the device is successfully established. |
+| `disconnect`     | -                                      | Emitted when the device is disconnected, either by calling `disconnect()` or externally. |
+| `reconnecting`   | `{ reason: string }`                   | Emitted when an automatic reconnection process starts after an unexpected disconnect. |
 | `reconnect_failed` | `{ attempts: number, error?: string }` | Emitted when the automatic reconnection process fails after all attempts. |
 
 ## Methods
@@ -159,9 +161,9 @@ Gets the value of a single property.
 
 **Parameters:**
 
-| Name   | Type              | Description                                                  |
-| ------ | ----------------- | ------------------------------------------------------------ |
-| `prop` | `string \| object` | The name of the property or the property definition object.  |
+| Name   | Type              | Description                                                 |
+| ------ | ----------------- | ----------------------------------------------------------- |
+| `prop` | `string \| object` | The name of the property or the property definition object. |
 
 **Returns:**
 
@@ -236,8 +238,8 @@ Unsubscribes from notifications for a property.
 
 **Parameters:**
 
-| Name   | Type              | Description                                                            |
-| ------ | ----------------- | ---------------------------------------------------------------------- |
+| Name   | Type              | Description                                                                |
+| ------ | ----------------- | -------------------------------------------------------------------------- |
 | `prop` | `string \| object` | The name of the property or property definition object to unsubscribe from. |
 
 **Returns:**
