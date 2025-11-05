@@ -155,68 +155,6 @@ export default class Miot {
 	};
 
 	/**
-	 * Выполняет верификацию 2FA тикета.
-	 * @param {string} notificationUrl URL для верификации.
-	 * @param {string} ticket Код подтверждения от пользователя.
-	 * @returns {Promise<string>} Финальный URL для получения serviceToken.
-	 */
-	async #verify2faTicket(notificationUrl, ticket) {
-		this.client.log('debug', '2FA Step: Verifying ticket');
-
-		// Шаг 1: Запрашиваем доступные методы верификации, чтобы получить cookie и определить правильный 'flag'
-		const listUrl = notificationUrl.replace('authStart', 'list');
-		const listResponse = await fetch(listUrl);
-		const identityCookie = listResponse.headers.get('set-cookie');
-		if (!identityCookie)
-			throw new Error('2FA verification failed: Could not get identity_session cookie.');
-
-		let listData = {};
-		try {
-			const responseText = await listResponse.text();
-			listData = this.parseJson(responseText);
-			this.client.log('debug', '2FA Step: Available methods response (JSON):', listData);
-		} catch (e) {
-			this.client.log('debug', '2FA Step: Could not parse methods response as JSON. Proceeding with default phone verification.');
-		}
-
-		const flag = listData?.flag || 4;
-		const verifyPath = flag === 8 ? '/identity/auth/verifyEmail' : '/identity/auth/verifyPhone';
-		this.client.log('debug', `2FA Step: Using verification method. Flag: ${flag}, Path: ${verifyPath}`);
-
-		// Шаг 2: Теперь отправляем сам тикет на правильный эндпоинт с правильным флагом
-		const verifyUrl = new URL(`https://account.xiaomi.com${verifyPath}`);
-		verifyUrl.searchParams.set('_dc', String(Date.now()));
-
-		const verifyResponse = await fetch(verifyUrl.toString(), {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-				'Cookie': identityCookie,
-				'Accept': 'application/json',
-				'x-requested-with': 'XMLHttpRequest'
-			},
-			body: new URLSearchParams({
-				ticket,
-				trust: 'true',
-				_json: 'true',
-				_flag: flag
-			})
-		});
-
-		const verifyText = await verifyResponse.text();
-		const verifyData = this.parseJson(verifyText);
-		this.client.log('debug', '2FA Step: Verification response:', verifyData);
-
-		if ((verifyData.code === 0) && verifyData.location) {
-			this.client.log('debug', '2FA ticket verification successful.');
-			return verifyData.location;
-		} else {
-			const errorDescription = verifyData.desc || verifyData.tips || 'Unknown error';
-			throw new Error(`2FA verification failed: ${errorDescription} (Code: ${verifyData.code})`);
-		}
-	};
-
-	/**
 	 * Загружает учетные данные из файла.
 	 * @returns {Promise<Credentials|null>}
 	 */
@@ -251,27 +189,34 @@ export default class Miot {
 			throw new Error('username empty');
 		if (!this.credentials.password)
 			throw new Error('password empty');
-		let ssecurity, userId, serviceToken;
+
+		let currentUrl, ssecurity, userId, serviceToken;
 		const serviceLoginUrl = 'https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true';
-		const logHeaders = (/** @type {Headers} */ headers) => JSON.stringify(Object.fromEntries(headers.entries()), null, 2);
+		const userAgent = 'APP/com.xiaomi.mihome APPV/10.5.201';
+
 		const cookieJar = new Map();
-		const updateCookieJar = (/** @type {string[]} */ newCookies) => {
-			if (!newCookies?.length)
+		const updateCookieJar = (/** @type {Headers} */ responseHeaders) => {
+			const setCookie = responseHeaders.getSetCookie?.() || [responseHeaders.get('set-cookie')];
+			if (!setCookie?.length)
 				return;
-			for (const cookie of newCookies) {
+			for (const cookie of setCookie) {
 				if (!cookie)
 					continue;
-				const name = cookie.split('=')[0].trim();
-				if (cookie.includes('Max-Age=0') || cookie.toUpperCase().includes('EXPIRED')) {
-					cookieJar.delete(name);
-					this.client.log('debug', `[DEBUG] COOKIE JAR: Deleting expired cookie: ${name}`);
-				} else {
-					cookieJar.set(name, cookie);
-					this.client.log('debug', `[DEBUG] COOKIE JAR: Setting/updating cookie: ${name}`);
-				}
+				const parts = cookie.split(';');
+				const cookiePair = parts[0].split('=');
+				if (cookiePair.length < 2)
+					continue;
+				const [name, ...valueParts] = cookiePair;
+				const value = valueParts.join('=');
+				if (cookie.toLowerCase().includes('max-age=0') || cookie.toLowerCase().includes('expires='))
+					cookieJar.delete(name.trim());
+				else if (name && value)
+					cookieJar.set(name.trim(), parts[0]);
 			}
+			this.client.log('debug', `Cookie JAR updated:`, Object.fromEntries(cookieJar));
 		};
-		const getCookieHeader = () => Array.from(cookieJar.values()).map(c => c.split(';')[0]).join('; ');
+
+		const getCookieHeader = () => Array.from(cookieJar.values()).join('; ');
 		const getCookieValue = (/** @type {string} */ name) => {
 			const cookie = cookieJar.get(name);
 			if (!cookie)
@@ -279,22 +224,22 @@ export default class Miot {
 			const valuePart = cookie.split(';')[0];
 			return valuePart.substring(valuePart.indexOf('=') + 1);
 		};
-		this.client.log('debug', `[DEBUG] STEP 1: Fetching _sign from ${serviceLoginUrl}`);
-		const step1Response = await fetch(serviceLoginUrl);
-		this.client.log('debug', `[DEBUG] STEP 1: Response status: ${step1Response.status}`);
-		this.client.log('debug', `[DEBUG] STEP 1: Response headers:\n${logHeaders(step1Response.headers)}`);
-		updateCookieJar(step1Response.headers.getSetCookie?.() || [step1Response.headers.get('set-cookie')]);
-		this.client.log('debug', `[DEBUG] STEP 1: Cookie Jar state:`, Object.fromEntries(cookieJar));
+
+		this.client.log('debug', `Fetching _sign from ${serviceLoginUrl}`);
+		const step1Response = await fetch(serviceLoginUrl, { headers: { 'User-Agent': userAgent, 'Cookie': getCookieHeader() } });
+		updateCookieJar(step1Response.headers);
+		this.client.log('debug', `Response status: ${step1Response.status}`);
+
 		const step1Data = this.parseJson(await step1Response.text());
 		if (!step1Data._sign)
 			throw new Error('Login step 1 failed: _sign not found');
+
 		const sign = step1Data._sign;
 		const step2Url = 'https://account.xiaomi.com/pass/serviceLoginAuth2';
-		this.client.log('debug', `\n[DEBUG] STEP 2: Sending credentials to ${step2Url}`);
-		this.client.log('debug', `[DEBUG] STEP 2: Sending with VALID Cookie header: ${getCookieHeader()}`);
+		this.client.log('debug', `Sending credentials to ${step2Url}`);
 		const step2Response = await fetch(step2Url, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Cookie': getCookieHeader() },
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent, 'Cookie': getCookieHeader() },
 			body: new URLSearchParams({
 				user: this.credentials.username,
 				hash: crypto.createHash('md5').update(this.credentials.password).digest('hex').toUpperCase(),
@@ -305,38 +250,95 @@ export default class Miot {
 				_sign: sign
 			})
 		});
-		this.client.log('debug', `[DEBUG] STEP 2: Response status: ${step2Response.status}`);
-		this.client.log('debug', `[DEBUG] STEP 2: Response headers:\n${logHeaders(step2Response.headers)}`);
-		updateCookieJar(step2Response.headers.getSetCookie?.() || []);
+		updateCookieJar(step2Response.headers);
+		this.client.log('debug', `Response status: ${step2Response.status}`);
+
 		const step2Data = this.parseJson(await step2Response.text());
-		this.client.log('debug', `[DEBUG] STEP 2: Response body:`, step2Data);
+		this.client.log('debug', `Response body:`, step2Data);
+
 		if (step2Data.notificationUrl) {
 			if (!handlers?.on2fa)
 				throw new Error('Two-factor authentication is required, but no "on2fa" handler was provided.');
-			const ticket = await handlers.on2fa(step2Data.notificationUrl);
-			if (!ticket)
-				throw new Error('2FA ticket was not provided. Login aborted.');
-			let currentUrl = await this.#verify2faTicket(step2Data.notificationUrl, ticket);
+			const context = new URL(step2Data.notificationUrl).searchParams.get('context');
+
+			this.client.log('debug', '2FA Step: Listing verification methods to prime session.');
+			const listUrl = new URL('https://account.xiaomi.com/identity/list');
+			listUrl.searchParams.set('sid', 'xiaomiio');
+			listUrl.searchParams.set('context', context);
+			listUrl.searchParams.set('_locale', 'en_US');
+			const listResponse = await fetch(listUrl.toString(), { headers: { 'User-Agent': userAgent, 'Cookie': getCookieHeader() } });
+			updateCookieJar(listResponse.headers);
+
+			this.client.log('debug', '2FA Step: Attempting to request verification code.');
+			const sendUrl = new URL('https://account.xiaomi.com/identity/auth/sendEmailTicket');
+			sendUrl.searchParams.set('_dc', String(Date.now()));
+			const sendResponse = await fetch(sendUrl.toString(), {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent, 'Cookie': getCookieHeader() },
+				body: new URLSearchParams({
+					context,
+					sid: 'xiaomiio',
+					_json: 'true',
+					ick: getCookieValue('ick') || ''
+				})
+			});
+			updateCookieJar(sendResponse.headers);
+			const sendData = this.parseJson(await sendResponse.text());
+			this.client.log('debug', '2FA Step: "sendEmailTicket" response:', sendData);
+
+			if (sendData.code === 0 && sendData.location) {
+				this.client.log('info', '2FA Step: Server skipped code verification, proceeding directly.');
+				currentUrl = sendData.location;
+			} else if (sendData.code === 0) {
+				const ticket = await handlers.on2fa(step2Data.notificationUrl);
+				if (!ticket)
+					throw new Error('2FA ticket was not provided. Login aborted.');
+
+				this.client.log('debug', '2FA Step: Verifying ticket.');
+				const verifyUrl = new URL('https://account.xiaomi.com/identity/auth/verifyEmail');
+				verifyUrl.searchParams.set('_json', 'true');
+				const verifyResponse = await fetch(verifyUrl.toString(), {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'User-Agent': userAgent, 'Cookie': getCookieHeader() },
+					body: new URLSearchParams({
+						ticket, context,
+						trust: 'true',
+						_json: 'true',
+						_flag: '8'
+					})
+				});
+				updateCookieJar(verifyResponse.headers);
+
+				const verifyData = this.parseJson(await verifyResponse.text());
+				this.client.log('debug', '2FA Step: Verification response:', verifyData);
+				if (verifyData.code !== 0 || !verifyData.location)
+					throw new Error(`2FA verification failed: ${verifyData.tips || verifyData.desc || 'Unknown error'}`);
+				currentUrl = verifyData.location;
+			} else
+				throw new Error(`Failed to request 2FA code: ${sendData.tips || sendData.desc}`);
+
+			this.client.log('debug', '2FA Step: Following redirect chain.');
 			for (let i = 0; i < 10; i++) {
-				this.client.log('debug', `\n[DEBUG] REDIRECT LOOP ${i}: Fetching URL: ${currentUrl}`);
-				this.client.log('debug', `[DEBUG] REDIRECT LOOP ${i}: Sending with Cookie header: ${getCookieHeader()}`);
-				const response = await fetch(currentUrl, { redirect: 'manual', headers: { 'Cookie': getCookieHeader() } });
-				this.client.log('debug', `[DEBUG] REDIRECT LOOP ${i}: Response status: ${response.status}`);
-				this.client.log('debug', `[DEBUG] REDIRECT LOOP ${i}: Response headers:\n${logHeaders(response.headers)}`);
-				updateCookieJar(response.headers.getSetCookie?.() || []);
-				if (!ssecurity && response.headers.has('extension-pragma')) {
-					const pragma = response.headers.get('extension-pragma');
+				this.client.log('debug', `REDIRECT LOOP ${i}: Fetching URL: ${currentUrl}`);
+				const redirectResponse = await fetch(currentUrl, { redirect: 'manual', headers: { 'User-Agent': userAgent, 'Cookie': getCookieHeader() } });
+				updateCookieJar(redirectResponse.headers);
+
+				const pragma = redirectResponse.headers.get('extension-pragma');
+				if (pragma)
 					try {
-						ssecurity = JSON.parse(pragma).ssecurity;
-						this.client.log('info', `[DEBUG] SUCCESS: ssecurity captured from extension-pragma header: ${ssecurity}`);
+						const pragmaJson = JSON.parse(pragma);
+						if (pragmaJson.ssecurity) {
+							ssecurity = pragmaJson.ssecurity;
+							this.client.log('info', `SUCCESS: ssecurity captured: ${ssecurity}`);
+						}
 					} catch (e) {
-						this.client.log('warn', 'Could not parse extension-pragma header as JSON', pragma);
+						this.client.log('warn', 'Could not parse extension-pragma header', pragma);
 					}
-				}
-				if (response.status >= 300 && response.status < 400 && response.headers.has('location')) {
-					currentUrl = new URL(response.headers.get('location'), currentUrl).toString();
-				} else {
-					this.client.log('debug', `[DEBUG] REDIRECT LOOP ${i}: End of redirect chain.`);
+
+				if (redirectResponse.status >= 300 && redirectResponse.status < 400 && redirectResponse.headers.has('location'))
+					currentUrl = new URL(redirectResponse.headers.get('location'), currentUrl).toString();
+				else {
+					this.client.log('debug', `End of redirect chain at loop ${i}.`);
 					break;
 				}
 			}
@@ -345,20 +347,23 @@ export default class Miot {
 		} else if (step2Data.ssecurity) {
 			ssecurity = step2Data.ssecurity;
 			userId = step2Data.userId;
-			const step3Response = await fetch(step2Data.location);
-			updateCookieJar(step3Response.headers.getSetCookie?.() || []);
+			const step3Response = await fetch(step2Data.location, { headers: { 'User-Agent': userAgent, 'Cookie': getCookieHeader() } });
+			updateCookieJar(step3Response.headers);
 			serviceToken = getCookieValue('serviceToken');
 		} else
 			throw new Error(`Login failed at Step 2. Server response: ${JSON.stringify(step2Data)}`);
+
 		if (!ssecurity || !userId || !serviceToken) {
 			this.client.log('error', `Login failed. ssecurity: ${!!ssecurity}, userId: ${!!userId}, serviceToken: ${!!serviceToken}`);
 			this.client.log('debug', 'Final state of cookie jar:', Object.fromEntries(cookieJar));
 			throw new Error(`Login failed: Could not retrieve all required credentials.`);
 		}
+
 		this.credentials.ssecurity = ssecurity;
 		this.credentials.userId = userId;
 		this.credentials.serviceToken = serviceToken;
 		this.client.emit('login', this.credentials);
+
 		return {
 			userId, ssecurity, serviceToken,
 			country: this.credentials.country

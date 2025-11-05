@@ -103,7 +103,6 @@ RED.nodes.registerType('xmihome-config', {
 						dialog.find('[data-i18n]').each(function () {
 							$(this).text(node._($(this).attr('data-i18n')));
 						});
-						dialog.find('.xmihome-2fa-url').attr('href', data.notificationUrl).text(data.notificationUrl);
 						(/** @type {any} */ (dialog)).dialog({
 							title: node._('config.dialog.title'),
 							modal: true,

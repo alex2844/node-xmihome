@@ -118,12 +118,11 @@ const handleLoginCommand = async (/** @type {LoginCommandArgs} */ argv) => {
 	const logLevel = argv.verbose ? 'debug' : 'none';
 	const client = new XiaomiMiHome({ credentials: argv, logLevel });
 	const handlers = {
-		on2fa: async (/** @type {string} */ notificationUrl) => {
+		on2fa: async (/** @type {string} */ _notificationUrl) => {
 			console.warn(`\n--- TWO-FACTOR AUTHENTICATION REQUIRED ---`);
-			console.log(`1. Open this URL in your browser:\n${notificationUrl}`);
-			console.log(`2. You will receive a verification code via SMS or Email.`);
+			console.log(`A verification code has been sent to your registered email or phone.`);
 			return await input({
-				message: '3. Enter the verification code here',
+				message: 'Please enter the code you received',
 				required: true
 			});
 		}
