@@ -14,7 +14,7 @@
 	},
 	"scripts": {
 		"test": "tsc -p ./jsconfig.json",
-		"postinstall": "xmihome-setup-bluetooth"
+		"postinstall": "./bin/setup-bluetooth.js"
 	},
 	"files": [
 		"./bin/",
