@@ -5,7 +5,7 @@
 	"type": "module",
 	"description": "The all-in-one Node.js toolkit for Xiaomi Mi Home. Provides a core library and Node-RED nodes for controlling devices via MiIO, MIoT Cloud, and Bluetooth (BLE).",
 	"scripts": {
-		"test": "tsc -p ./jsconfig.json",
+		"test": "bun --filter=* run test",
 		"build": "bun --filter=* run build",
 		"clean": "rm -rf ./packages/*/dist",
 		"publish": "./scripts/publish.sh",
