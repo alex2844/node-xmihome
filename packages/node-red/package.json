@@ -9,7 +9,7 @@
 		"build": "bun ./build.js",
 		"start": "node-red --settings settings.cjs",
 		"dev": "nodemon --exec 'bun run build && bun run start' --watch src --watch locales --watch docs -e js,json,html,md",
-		"prepublishOnly": "npm run build"
+		"prepack": "bun run build"
 	},
 	"files": [
 		"./dist/",

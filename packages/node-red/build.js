@@ -4,7 +4,7 @@ import path from 'path';
 import { rm, mkdir, readdir, stat } from 'fs/promises';
 
 const SRC_DIR = path.resolve(import.meta.dir, 'src');
-const LOCALES_DIR = path.resolve(import.meta.dir, 'locales');
+const LOCALES_DIR = path.resolve(import.meta.dir, 'src/locales');
 const DOCS_DIR = path.resolve(import.meta.dir, 'docs');
 const DIST_DIR = path.resolve(import.meta.dir, 'dist');
 
