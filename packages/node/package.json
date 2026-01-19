@@ -14,7 +14,7 @@
 	},
 	"scripts": {
 		"test": "tsc -p ./jsconfig.json",
-		"postinstall": "./bin/setup-bluetooth.js"
+		"postinstall": "node ./bin/setup-bluetooth.js"
 	},
 	"files": [
 		"./bin/",
