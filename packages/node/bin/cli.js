@@ -70,12 +70,12 @@ const formatTable = (/** @type {DiscoveredDevice[]} */ devices) => {
 		console.log('No devices found.');
 		return;
 	}
-	const headers = ['Name', 'Model', 'ID / IP / MAC', 'Token', 'Online'];
+	const headers = ['Name', 'Model', 'ID / IP / MAC', 'Key (BLE / MiIO)', 'Online'];
 	const rows = devices.map(d => [
 		d.name || '',
 		d.model || '',
-		d.id || d.address || d.mac || '',
-		d.token || 'N/A',
+		d.id ? `ID: ${d.id}` : (d.address ? `IP: ${d.address}` : (d.mac ? `MAC: ${d.mac}` : '')),
+		d.bindkey ? `BLE: ${d.bindkey}` : (d.token ? `MiIO: ${d.token}` : 'N/A'),
 		typeof d.isOnline === 'boolean' ? (d.isOnline ? 'Yes' : 'No') : 'N/A'
 	]);
 
