@@ -12,9 +12,9 @@ import {
  * @property {string} [id] ID устройства в облаке Xiaomi (для облачного подключения).
  * @property {string} [name] Имя устройства (для удобства).
  * @property {string} [model] Модель устройства. Если не указана, будет попытаться определиться автоматически.
- * @property {string} [token] Токен устройства (для MiIO подключения).
  * @property {string} [address] IP-адрес устройства (для MiIO подключения).
  * @property {string} [mac] MAC-адрес устройства (используется для Bluetooth / BLE).
+ * @property {string} [token] Токен устройства (для MiIO подключения).
  * @property {string} [bindkey] Ключ привязки BLE (MiBeacon bindkey, 16 байт в hex).
  */
 /** @typedef {Config & { isOnline?: boolean }} DiscoveredDevice */

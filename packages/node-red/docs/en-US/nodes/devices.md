@@ -27,6 +27,7 @@ a single discovered device. The object structure typically includes:
   - `address`: Local IP address (for MiIO devices)
   - `mac`: MAC address (for Bluetooth devices)
   - `token`: Token for local control (if available)
+  - `bindkey`: BLE bind key (for encrypted Bluetooth devices)
   - `isOnline`: Device status in the cloud (if discovered via cloud)
 
 ### Usage Example
@@ -34,4 +35,3 @@ a single discovered device. The object structure typically includes:
 Connect an `Inject` node to this node to trigger discovery on-demand.
 Connect a `Debug` node to the output to see the list of found devices.
 This list can be used to dynamically configure the `Device` node.
-
