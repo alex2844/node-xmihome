@@ -290,13 +290,23 @@ export default class XiaomiMiHome extends EventEmitter {
 			const devices = [];
 			this.config.devices = [];
 			for (const dev of result.list) {
+				let bindkey = '';
+				if (dev.did.startsWith('blt.')) {
+					const { result: get_beaconkey } = await this.miot.request('/v2/device/blt_get_beaconkey', {
+						did: dev.did,
+						pdid: 1
+					});
+					if (get_beaconkey?.beaconkey)
+						bindkey = get_beaconkey?.beaconkey;
+				}
 				const device = {
 					id: dev.did,
 					name: dev.name,
+					model: dev.model,
+					token: dev.token,
 					address: dev.localip,
 					mac: dev.mac,
-					token: dev.token,
-					model: dev.model,
+					bindkey: bindkey,
 					isOnline: dev.isOnline
 				};
 				this.config.devices.push(device);
