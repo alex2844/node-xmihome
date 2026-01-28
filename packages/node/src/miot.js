@@ -268,9 +268,17 @@ export default class Miot {
 			listUrl.searchParams.set('_locale', 'en_US');
 			const listResponse = await fetch(listUrl.toString(), { headers: { 'User-Agent': userAgent, 'Cookie': getCookieHeader() } });
 			updateCookieJar(listResponse.headers);
+			const listData = this.parseJson(await listResponse.text());
+			this.client.log('debug', '2FA Step: Identity list response:', listData);
+
+			const flag = listData.flag === 4 ? 4 : 8;
+			const authType = flag === 4 ? 'Phone' : 'Email';
+			const sendEndpoint = `send${authType}Ticket`;
+			const verifyEndpoint = `verify${authType}`;
+			this.client.log('debug', `2FA Step: Detected verification method: ${authType} (flag: ${flag})`);
 
 			this.client.log('debug', '2FA Step: Attempting to request verification code.');
-			const sendUrl = new URL('https://account.xiaomi.com/identity/auth/sendEmailTicket');
+			const sendUrl = new URL(`https://account.xiaomi.com/identity/auth/${sendEndpoint}`);
 			sendUrl.searchParams.set('_dc', String(Date.now()));
 			const sendResponse = await fetch(sendUrl.toString(), {
 				method: 'POST',
@@ -284,7 +292,7 @@ export default class Miot {
 			});
 			updateCookieJar(sendResponse.headers);
 			const sendData = this.parseJson(await sendResponse.text());
-			this.client.log('debug', '2FA Step: "sendEmailTicket" response:', sendData);
+			this.client.log('debug', `2FA Step: "${sendEndpoint}" response:`, sendData);
 
 			if (sendData.code === 0 && sendData.location) {
 				this.client.log('info', '2FA Step: Server skipped code verification, proceeding directly.');
@@ -295,7 +303,7 @@ export default class Miot {
 					throw new Error('2FA ticket was not provided. Login aborted.');
 
 				this.client.log('debug', '2FA Step: Verifying ticket.');
-				const verifyUrl = new URL('https://account.xiaomi.com/identity/auth/verifyEmail');
+				const verifyUrl = new URL(`https://account.xiaomi.com/identity/auth/${verifyEndpoint}`);
 				verifyUrl.searchParams.set('_json', 'true');
 				const verifyResponse = await fetch(verifyUrl.toString(), {
 					method: 'POST',
@@ -304,7 +312,7 @@ export default class Miot {
 						ticket, context,
 						trust: 'true',
 						_json: 'true',
-						_flag: '8'
+						_flag: String(flag)
 					})
 				});
 				updateCookieJar(verifyResponse.headers);
