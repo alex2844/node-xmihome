@@ -88,25 +88,52 @@ export class BluetoothDevice {
 	 * @returns {Promise<void>}
 	 */
 	async connect() {
-		await this.dbusInterface.Connect();
+		const sec = process.env.DBUS_SYSTEM_BUS_ADDRESS ? 30 : 10;
+		const properties = this.proxy.getInterface('org.freedesktop.DBus.Properties');
+		const checkResolved = async () => {
+			try {
+				const { value } = await properties.Get('org.bluez.Device1', 'ServicesResolved');
+				return value;
+			} catch {
+				return false;
+			}
+		};
+		if (await checkResolved())
+			return;
 		return new Promise(async (resolve, reject) => {
-			const properties = this.proxy.getInterface('org.freedesktop.DBus.Properties');
-			const isResolved = await properties.Get('org.bluez.Device1', 'ServicesResolved');
-			if (isResolved.value)
-				return resolve();
 			let timerId;
 			const onPropertiesChanged = (/** @type {any} */ changedProps) => {
 				if (changedProps.ServicesResolved) {
-					clearTimeout(timerId);
-					this.bluetooth.off(`properties:${this.id}`, onPropertiesChanged);
-					resolve();
+					cleanup();
+					return resolve();
 				}
 			};
-			timerId = setTimeout(() => {
+			const cleanup = () => {
+				clearTimeout(timerId);
 				this.bluetooth.off(`properties:${this.id}`, onPropertiesChanged);
-				reject(new Error(`Timed out after 10s waiting for services to be resolved.`));
-			}, 10_000);
+			};
+			timerId = setTimeout(() => {
+				cleanup();
+				reject(new Error(`Timed out after ${sec}s waiting for services to be resolved.`));
+			}, sec * 1000);
 			this.bluetooth.on(`properties:${this.id}`, onPropertiesChanged);
+			try {
+				await this.dbusInterface.Connect();
+				if (await checkResolved()) {
+					cleanup();
+					return resolve();
+				}
+			} catch (err) {
+				if (err.type === 'org.bluez.Error.InProgress' || err.type === 'org.bluez.Error.AlreadyConnected') {
+					if (await checkResolved()) {
+						cleanup();
+						return resolve();
+					}
+				} else {
+					cleanup();
+					return reject(err);
+				}
+			}
 		});
 	};
 
@@ -272,6 +299,8 @@ export default class Bluetooth extends EventEmitter {
 	 * @returns {Promise<boolean>} true если сервис доступен, false в противном случае.
 	 */
 	async checkBlueZService() {
+		if (process.env.DBUS_SYSTEM_BUS_ADDRESS)
+			return true;
 		try {
 			const dbus = await import('dbus-next');
 			const bus = dbus.systemBus();
@@ -296,7 +325,7 @@ export default class Bluetooth extends EventEmitter {
 	async defaultAdapter(device = 'hci0') {
 		this.client?.log('info', `Initializing Bluetooth adapter: ${device}`);
 		const isBlueZAvailable = await this.checkBlueZService();
-		if (!isBlueZAvailable) {
+		if (!isBlueZAvailable)
 			throw new Error([
 				'Bluetooth Service Unavailable',
 				'The BlueZ Bluetooth service is not running or not available on this system.',
@@ -313,7 +342,6 @@ export default class Bluetooth extends EventEmitter {
 				'4. Verify the service is running:',
 				'   systemctl status bluetooth'
 			].join('\n'));
-		}
 		try {
 			const dbus = await import('dbus-next');
 			this.device = device;
@@ -321,7 +349,10 @@ export default class Bluetooth extends EventEmitter {
 			this.client?.log('debug', `Connecting to D-Bus system bus for Bluetooth`);
 			this.bus = await new Promise((resolve, reject) => {
 				try {
-					const bus = dbus.systemBus();
+					let /** @type {any} */ options;
+					if (process.env.DBUS_SYSTEM_BUS_ADDRESS)
+						options = { authMethods: ['ANONYMOUS', 'EXTERNAL'] };
+					const bus = dbus.systemBus(options);
 					bus.once('message', () => resolve(bus));
 					bus.once('error', err => reject(err));
 				} catch (err) {
@@ -369,109 +400,6 @@ export default class Bluetooth extends EventEmitter {
 			throw err;
 		}
 	};
-	
-	// /**
-	//  * Инициализирует адаптер Bluetooth по умолчанию.
-	//  * @param {string} [device='hci0'] Имя адаптера Bluetooth.
-	//  * @returns {Promise<object>} Интерфейс адаптера Bluetooth.
-	//  * @throws {Error} Если нет доступа к Bluetooth сервисам через D-Bus.
-	//  */
-	// async defaultAdapter(device = 'hci0') {
-	// 	if (this.adapter)
-	// 		return this.adapter;
-	// 	if (this.bus === null)
-	// 		return;
-	// 	this.client?.log('info', `Initializing Bluetooth adapter: ${device}`);
-	// 	try {
-	// 		const dbus = await import('dbus-next');
-	// 		const bus = dbus.systemBus();
-	// 		const dbusProxy = await bus.getProxyObject('org.freedesktop.DBus', '/org/freedesktop/DBus');
-	// 		const dbusInterface = dbusProxy.getInterface('org.freedesktop.DBus');
-	// 		const names = await dbusInterface.ListNames();
-	// 		if (!names.includes('org.bluez')) {
-	// 			this.client?.log('warn', `Bluetooth service 'org.bluez' not found. This is normal if Bluetooth is not available.`);
-	// 			bus.disconnect();
-	// 			this.bus = null;
-	// 			return;
-	// 		}
-	// 		this.path = `/org/bluez/${device}`;
-	// 		this.bluez = await bus.getProxyObject('org.bluez', this.path);
-	// 		this.adapter = this.bluez.getInterface('org.bluez.Adapter1');
-	// 		await dbusInterface.AddMatch("type='signal'");
-	// 		this.bus = bus;
-	// 		this.bus.on('message', this.#listener.bind(this));
-	// 		this.bus.on('error', (err) => this.client?.log('error', 'An operational D-Bus error occurred:', err));
-	// 		this.client?.log('info', `Bluetooth adapter ${device} initialized successfully`);
-	// 		return this.adapter;
-	// 	} catch (err) {
-	// 		this.client?.log('warn', `An unexpected error occurred during Bluetooth initialization.`);
-	// 		this.client?.log('debug', `Bluetooth init error details:`, err);
-	// 		if (this.bus)
-	// 			this.bus.disconnect();
-	// 		this.bus = null;
-	// 		this.adapter = null;
-	// 		return;
-	// 	}
-	// };
-
-	// async defaultAdapter(device = 'hci0') {
-	// 	this.client?.log('info', `Initializing Bluetooth adapter: ${device}`);
-	// 	try {
-	// 		const dbus = await import('dbus-next');
-	// 		this.device = device;
-	// 		this.path = `/org/bluez/${device}`;
-	// 		this.client?.log('debug', `Connecting to D-Bus system bus for Bluetooth`);
-	// 		this.bus = await new Promise((resolve, reject) => {
-	// 			try {
-	// 				const bus = dbus.systemBus();
-	// 				bus.once('message', () => resolve(bus));
-	// 				bus.once('error', err => reject(err));
-	// 			} catch (err) {
-	// 				reject(err);
-	// 			}
-	// 		});
-	// 		this.client?.log('debug', `Getting D-Bus proxy object for org.bluez at ${this.path}`);
-	// 		try {
-	// 			this.bluez = await this.bus.getProxyObject('org.bluez', this.path);
-	// 		} catch (err) {
-	// 			if (err.type === 'org.freedesktop.DBus.Error.AccessDenied') {
-	// 				const { fileURLToPath } = await import('url')
-	// 				const path = await import('path');
-	// 				const __filename = fileURLToPath(import.meta.url);
-	// 				const __dirname = path.dirname(path.join(__filename, '..'));
-	// 				throw new Error([
-	// 					'Bluetooth Access Denied',
-	// 					'Your user account doesn\'t have permission to access Bluetooth services via D-Bus.', '',
-	// 					'To fix this issue, run the following command:',
-	// 					`sudo cp ${__dirname}/xmihome_bluetooth.conf /etc/dbus-1/system.d/`, '',
-	// 					'After running this command, restart the Bluetooth service with:',
-	// 					'sudo systemctl restart bluetooth', '',
-	// 					'This will grant your user the necessary Bluetooth permissions.'
-	// 				].join('\n'));
-	// 			}
-	// 			throw err;
-	// 		}
-	// 		this.client?.log('debug', `Getting D-Bus interface org.bluez.Adapter1`);
-	// 		this.adapter = this.bluez.getInterface('org.bluez.Adapter1');
-	// 		this.client?.log('debug', `Adding D-Bus signal match`);
-	// 		await this.bus.call(new dbus.Message({
-	// 			destination: 'org.freedesktop.DBus',
-	// 			path: '/org/freedesktop/DBus',
-	// 			interface: 'org.freedesktop.DBus',
-	// 			member: 'AddMatch',
-	// 			signature: 's',
-	// 			body: ["type='signal'"]
-	// 		}));
-	// 		this.bus.on('message', this.#listener.bind(this));
-	// 		this.client?.log('info', `Bluetooth adapter ${device} initialized successfully`);
-	// 		return this.adapter;
-	// 	} catch (err) {
-	// 		this.adapter = null;
-	// 		this.client?.log('error', `Failed to initialize Bluetooth adapter ${device}:`, err);
-	// 		if (err.type !== 'org.freedesktop.DBus.Error.AccessDenied')
-	// 			throw err;
-	// 	}
-	// };
 
 	/**
 	 * Извлекает свойства из объекта Variant D-Bus.
@@ -641,6 +569,27 @@ export default class Bluetooth extends EventEmitter {
 	};
 
 	/**
+	 * Удаляет устройство из кэша BlueZ и разрывает соединение, если оно установлено.
+	 * @param {string} mac MAC-адрес устройства.
+	 * @returns {Promise<boolean>}
+	 */
+	async removeDevice(mac) {
+		const id = mac.replace(/:/g, '_').toUpperCase();
+		if (!this.adapter) {
+			this.client?.log('info', 'Bluetooth adapter not initialized, initializing now.');
+			await this.defaultAdapter();
+		}
+		const path = `${this.path}/dev_${id}`;
+		try {
+			this.client?.log('debug', `Removing device from BlueZ cache: ${path}`);
+			await this.adapter.RemoveDevice(path);
+			return true;
+		} catch (err) {
+			return false;
+		}
+	};
+
+	/**
 	 * Запускает обнаружение Bluetooth устройств.
 	 * @param {string[]} [filters] Массив UUID фильтров для обнаружения устройств.
 	 * @returns {Promise<boolean>}
@@ -661,6 +610,10 @@ export default class Bluetooth extends EventEmitter {
 				this.client?.log('debug', 'Bluetooth discovery started successfully via D-Bus');
 				return true;
 			} catch (err) {
+				if (err.type === 'org.bluez.Error.InProgress') {
+					this.client?.log('debug', 'Discovery already in progress, ignoring error.');
+					return true;
+				}
 				this.isDiscovering = false;
 				this.client?.log('error', 'Failed to start Bluetooth discovery:', err);
 				throw err;
@@ -682,8 +635,12 @@ export default class Bluetooth extends EventEmitter {
 			await this.adapter.StopDiscovery();
 			this.client?.log('debug', 'Bluetooth discovery stopped successfully via D-Bus');
 		} catch (err) {
-			this.client?.log('error', 'Failed to stop Bluetooth discovery:', err);
-			throw err;
+			if (err.type === 'org.bluez.Error.Failed')
+				this.client?.log('debug', 'Discovery was not running on the adapter, ignoring error.');
+			else {
+				this.client?.log('error', 'Failed to stop Bluetooth discovery:', err);
+				throw err;
+			}
 		}
 	};
 

@@ -13,7 +13,7 @@ export default class YunmiKettle extends Device {
 
 	/** @type {string[]} */
 	static alias = [
-		'MiKettle'
+		'MiKettle', 'YM-K1501', 'YM-K1501EU'
 	];
 
 	/** @type {string[]} */
