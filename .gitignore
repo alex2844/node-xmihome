@@ -1,5 +1,7 @@
 node_modules
 xmihome_bluetooth.conf
+xmihome_bluetooth_remote.conf
+xmihome-dbus-proxy.service
 docs_apply.sh
 dist
 .env
