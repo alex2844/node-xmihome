@@ -292,6 +292,8 @@ export default class Device extends EventEmitter {
 	 */
 	#disconnectPromise;
 
+	#monitoringCount = 0;
+
 	/**
 	 * Конфигурация устройства.
 	 * @type {Config}
@@ -305,8 +307,16 @@ export default class Device extends EventEmitter {
 	client = null;
 
 	/**
-	*/
+	 * Объект устройства.
+	 * @type {Object|null}
+	 */
 	device = null;
+
+	/**
+	 * Текущее состояние устройства (последние полученные параметры и RSSI).
+	 * @type {Object}
+	 */
+	#state = {};
 
 	/**
 	 * Конструктор класса Device.
@@ -719,6 +729,41 @@ export default class Device extends EventEmitter {
 			delete this.notify[prop.key];
 		}
 		this.client.log('debug', `Notifications stopped successfully for '${prop.key}'`);
+	};
+
+	/**
+	 * Начинает мониторинг рекламных пакетов устройства без создания постоянного соединения.
+	 * @param {function} callback Функция обратного вызова.
+	 */
+	async startMonitoring(callback) {
+		let lastValue = null;
+		const connectionType = this.class.getDeviceType(this.config);
+		if (connectionType !== 'bluetooth')
+			throw new Error('Monitoring is only available for local Bluetooth devices');
+		this.#monitoringCount++;
+		this.client.bluetooth.registerBindKey(this.config.mac, this.config.bindkey);
+		this.client.bluetooth.on(`advertisement:${this.config.mac}`, msg => {
+			const rssiChanged = this.#state.rssi === undefined || Math.abs(msg.rssi - this.#state.rssi) >= 3;
+			const params = { ...this.#state.params, ...msg.payload };
+			const paramsStr = JSON.stringify(params);
+			if (paramsStr !== lastValue || rssiChanged) {
+				lastValue = paramsStr;
+				this.#state = { params, rssi: msg.rssi };
+				callback({ ...msg, params: this.#state.params });
+			}
+		});
+		await this.client.bluetooth.startMonitoring();
+	};
+
+	/**
+	 * Очищает подписки и останавливает мониторинг для данного устройства.
+	 */
+	async stopMonitoring() {
+		this.client.bluetooth.removeAllListeners(`advertisement:${this.config.mac}`);
+		while (this.#monitoringCount > 0) {
+			await this.client.bluetooth.stopMonitoring();
+			this.#monitoringCount--;
+		}
 	};
 
 	/**

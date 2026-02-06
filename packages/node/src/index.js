@@ -21,7 +21,7 @@ import { devices } from 'xmihome-devices';
 /**
  * @typedef {Object} Config
  * @property {Credentials} [credentials] Учетные данные для облачного подключения.
- * @property {string} [credentialsFile] - Путь к файлу с учетными данными.
+ * @property {string} [credentialsFile] Путь к файлу с учетными данными.
  * @property {('miio'|'bluetooth'|'cloud')} [connectionType] Тип подключения по умолчанию.
  * @property {DeviceConfig[]} [devices] Массив устройств для поиска и подключения.
  * @property {('none'|'error'|'warn'|'info'|'debug')} [logLevel='none'] Уровень логирования через console. По умолчанию 'none'.

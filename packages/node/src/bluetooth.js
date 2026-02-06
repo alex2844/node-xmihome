@@ -1,5 +1,6 @@
 import EventEmitter from 'events';
-import { GET_DEVICE_DISCOVERY_TIMEOUT } from './constants.js';
+import MiBeacon from './mibeacon.js';
+import { UUID, GET_DEVICE_DISCOVERY_TIMEOUT } from './constants.js';
 import { createFallbackProxy } from './index.js';
 /** @import { XiaomiMiHome } from './index.js' */
 /** @import { default as Device, Config as DeviceConfig } from './device.js' */
@@ -262,10 +263,46 @@ export default class Bluetooth extends EventEmitter {
 	filters = null;
 
 	/**
+	 * Карта соответствия MAC-адреса и bindkey.
+	 * @type {Map<string, Buffer>}
+	 */
+	bindKeys = new Map();
+
+	/**
 	 * Флаг, указывающий, выполняется ли в данный момент обнаружение Bluetooth устройств.
 	 * @type {boolean}
 	 */
 	isDiscovering = false;
+
+	/**
+	 * Флаг активного мониторинга рекламных пакетов.
+	 * @type {boolean}
+	 */
+	isMonitoring = false;
+
+	/**
+	 * Счетчик активных запросов на обнаружение.
+	 * @type {number}
+	 */
+	#discoveringCount = 0;
+
+	/**
+	 * Счетчик активных подписок на мониторинг
+	 * @type {number}
+	 */
+	#monitoringCount = 0;
+
+	/**
+	 * Кэш последних значений RSSI для каждого устройства.
+	 * @type {Map<string, number>}
+	 */
+	#rssi = new Map();
+
+	/**
+	 * Экземпляр класса XiaomiMiHome.
+	 * @type {XiaomiMiHome}
+	 */
+	client = null;
 
 	/**
 	 * Создает и инициализирует экземпляр класса Bluetooth.
@@ -286,12 +323,23 @@ export default class Bluetooth extends EventEmitter {
 	};
 
 	/**
+	 * Регистрирует bindkey для устройства.
+	 * @param {string} mac MAC-адрес устройства.
+	 * @param {string} bindkey Ключ.
+	 */
+	registerBindKey(mac, bindkey) {
+		if (mac && bindkey)
+			this.bindKeys.set(mac.toUpperCase(), Buffer.from(bindkey, 'hex'));
+	};
+
+	/**
 	 * Конструктор класса Bluetooth.
 	 * @param {XiaomiMiHome} [client] Экземпляр класса XiaomiMiHome.
 	 */
 	constructor(client) {
 		super();
 		this.client = client;
+		client?.config?.devices?.forEach(({ mac, bindkey }) => this.registerBindKey(mac, bindkey));
 	};
 
 	/**
@@ -478,6 +526,23 @@ export default class Bluetooth extends EventEmitter {
 					this.emit(`available:${device}`, config);
 					this.emit('available', config);
 				}
+				if (properties.RSSI !== undefined)
+					this.#rssi.set(device, properties.RSSI);
+				if (this.isMonitoring && properties.ServiceData) {
+					const id = UUID.find(id => properties.ServiceData[id]);
+					if (id) {
+						const beacon = new MiBeacon(this, device, properties.ServiceData[id], id);
+						const parsed = beacon.parse();
+						if (parsed) {
+							const msg = {
+								rssi: properties.RSSI ?? this.#rssi.get(device),
+								...parsed
+							};
+							this.emit(`advertisement:${parsed.mac}`, msg);
+							this.emit('advertisement', msg);
+						}
+					}
+				}
 				this.emit(`properties:${device}`, properties);
 				break;
 			};
@@ -595,6 +660,7 @@ export default class Bluetooth extends EventEmitter {
 	 * @returns {Promise<boolean>}
 	 */
 	async startDiscovery(filters) {
+		this.#discoveringCount++;
 		if (this.isDiscovering) {
 			this.client?.log('warn', 'Attempted to start discovery, but it is already running.');
 			return;
@@ -623,10 +689,14 @@ export default class Bluetooth extends EventEmitter {
 
 	/**
 	 * Останавливает обнаружение Bluetooth устройств.
+	 * @param {boolean} [force=false] Если true, принудительно сбрасывает счетчик и останавливает обнаружение.
 	 * @returns {Promise<void>}
 	 */
-	async stopDiscovery() {
+	async stopDiscovery(force = false) {
 		if (!this.isDiscovering)
+			return;
+		this.#discoveringCount = force ? 0 : Math.max(0, this.#discoveringCount - 1);
+		if (this.#discoveringCount > 0)
 			return;
 		this.client?.log('info', 'Stopping Bluetooth discovery');
 		this.isDiscovering = false;
@@ -645,13 +715,44 @@ export default class Bluetooth extends EventEmitter {
 	};
 
 	/**
+	 * Запускает режим мониторинга рекламных пакетов (passive scanning).
+	 * @returns {Promise<boolean>}
+	 */
+	async startMonitoring() {
+		this.#monitoringCount++;
+		if (this.isMonitoring)
+			return;
+		this.client?.log('info', 'Starting Bluetooth monitoring');
+		this.isMonitoring = true;
+		return this.startDiscovery();
+	};
+
+	/**
+	 * Останавливает режим мониторинга.
+	 * @param {boolean} [force=false] Если true, принудительно сбрасывает счетчик и останавливает мониторинг.
+	 * @returns {Promise<void>}
+	 */
+	async stopMonitoring(force = false) {
+		if (!this.isMonitoring)
+			return;
+		this.#monitoringCount = force ? 0 : Math.max(0, this.#monitoringCount - 1);
+		if (this.#monitoringCount > 0)
+			return;
+		this.client?.log('info', 'Stopping Bluetooth monitoring');
+		this.isMonitoring = false;
+		await this.stopDiscovery();
+	};
+
+	/**
 	 * Освобождает ресурсы и отключается от Bluetooth адаптера.
 	 * @returns {Promise<void>}
 	 */
 	async destroy() {
 		this.client?.log('info', 'Destroying Bluetooth instance...');
+		if (this.isMonitoring)
+			await this.stopMonitoring(true);
 		if (this.isDiscovering)
-			await this.stopDiscovery();
+			await this.stopDiscovery(true);
 		if (this.bus) {
 			this.bus.off('message', this.#listener);
 			for (const device in this.connected) {
