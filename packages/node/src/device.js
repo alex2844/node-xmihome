@@ -171,7 +171,7 @@ export default class Device extends EventEmitter {
 	 * @returns {'miio'|'bluetooth'|'cloud'|undefined} Определенный тип подключения или undefined, если не удалось определить.
 	 */
 	static getDeviceType(device, credentials) {
-		if (device.address && device.token)
+		if (device.address && device.token && !device.id?.startsWith('blt.'))
 			return 'miio';
 		if (device.mac && device.model)
 			return 'bluetooth';

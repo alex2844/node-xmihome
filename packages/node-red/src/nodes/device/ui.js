@@ -19,7 +19,7 @@ function validateDevice() {
 };
 
 function getIdType(/** @type {Device} */ device) {
-	if (device.address && device.token && !device.id.startsWith('blt.'))
+	if (device.address && device.token && !device.id?.startsWith('blt.'))
 		return 'miio';
 	else if (device.mac && device.model)
 		return 'bluetooth';
