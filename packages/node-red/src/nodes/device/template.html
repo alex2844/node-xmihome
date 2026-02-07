@@ -84,15 +84,8 @@
 	<legend data-i18n="device.label.action"></legend>
 	<div class="form-row">
 		<label for="node-input-action"><i class="fa fa-tasks"></i> <span data-i18n="device.label.action"></span></label>
-		<select id="node-input-action" style="width: 70%">
-			<option value="getProperties" data-i18n="device.label.actionGetAll"></option>
-			<option value="getProperty" data-i18n="device.label.actionGet"></option>
-			<option value="setProperty" data-i18n="device.label.actionSet"></option>
-			<option value="callAction" data-i18n="device.label.actionCall"></option>
-			<option value="callMethod" data-i18n="device.label.actionCallMethod"></option>
-			<option value="subscribe" data-i18n="device.label.actionSubscribe"></option>
-			<option value="unsubscribe" data-i18n="device.label.actionUnsubscribe"></option>
-		</select>
+		<input type="text" id="node-input-action" style="width: 70%;" />
+		<input type="hidden" id="node-input-actionType" />
 	</div>
 	<div class="form-row" id="node-config-row-property">
 		<label for="node-input-propertySource"><i class="fa fa-cogs"></i> <span data-i18n="device.label.property"></span></label>

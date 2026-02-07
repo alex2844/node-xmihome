@@ -211,6 +211,7 @@ RED.nodes.registerType('xmihome-device', {
 		device: { value: '{}', validate: validateDevice },
 		deviceType: { value: 'json' },
 		action: { value: 'getProperty', required: true },
+		actionType: { value: 'action' },
 		property: { value: '' },
 		propertyType: { value: 'str' },
 		value: { value: '' },
@@ -232,6 +233,26 @@ RED.nodes.registerType('xmihome-device', {
 		$('#node-input-device').typedInput({
 			typeField: '#node-input-deviceType',
 			types: ['json', 'msg']
+		});
+		$('#node-input-action').typedInput({
+			types: [
+				{
+					value: 'action',
+					options: [
+						{ value: 'getProperties', label: this._('device.label.actionGetAll') },
+						{ value: 'getProperty', label: this._('device.label.actionGet') },
+						{ value: 'setProperty', label: this._('device.label.actionSet') },
+						{ value: 'callAction', label: this._('device.label.actionCall') },
+						{ value: 'callMethod', label: this._('device.label.actionCallMethod') },
+						{ value: 'subscribe', label: this._('device.label.actionSubscribe') },
+						{ value: 'startMonitoring', label: this._('device.label.actionSubscribeAdvertisements') },
+						{ value: 'unsubscribe', label: this._('device.label.actionUnsubscribe') },
+						{ value: 'stopMonitoring', label: this._('device.label.actionUnsubscribeAdvertisements') }
+					]
+				},
+				'msg'
+			],
+			typeField: '#node-input-actionType'
 		});
 		$('#node-input-property').typedInput({
 			typeField: '#node-input-propertyType',

@@ -10,6 +10,7 @@ import Device from 'xmihome/device.js';
  *   device: string;
  *   deviceType: 'json'|'msg';
  *   action: 'getProperties'|'getProperty'|'setProperty'|'callAction'|'callMethod'|'subscribe'|'unsubscribe'|'startMonitoring'|'stopMonitoring';
+ *   actionType: 'action'|'msg';
  *   property: string;
  *   propertyType: 'str'|'msg'|'flow'|'global'|'json';
  *   value: string;
@@ -287,6 +288,7 @@ export class DeviceNode {
 		const topic = this.#RED.util.evaluateNodeProperty(this.#config.topic, this.#config.topicType, this.#node, msg);
 		const value = this.#RED.util.evaluateNodeProperty(this.#config.value, this.#config.valueType, this.#node, msg);
 		const property = this.#RED.util.evaluateNodeProperty(this.#config.property, this.#config.propertyType, this.#node, msg);
+		const action = this.#RED.util.evaluateNodeProperty(this.#config.action, this.#config.actionType, this.#node, msg);
 		const formattedProperty = this.formatPropertyForStatus(property);
 		try {
 			deviceConfig = this.getDeviceConfig(msg);
@@ -296,9 +298,9 @@ export class DeviceNode {
 				clearTimeout(this.settings.disconnectTimers.get(deviceId));
 				this.settings.disconnectTimers.delete(deviceId);
 			}
-			if (!['getProperties', 'getProperty', 'setProperty', 'callAction', 'callMethod', 'subscribe', 'unsubscribe'].includes(this.#config.action))
-				throw new Error(`Invalid action specified: ${this.#config.action}`);
-			if ((this.#config.action !== 'getProperties') && !property)
+			if (!['getProperties', 'getProperty', 'setProperty', 'callAction', 'callMethod', 'subscribe', 'unsubscribe', 'startMonitoring', 'stopMonitoring'].includes(action))
+				throw new Error(`Invalid action specified: ${action}`);
+			if ((!['getProperties', 'startMonitoring', 'stopMonitoring'].includes(action)) && !property)
 				throw new Error('Property name is missing (configure node or provide msg.property)');
 			if (this.settings.devices.has(deviceId)) {
 				device = this.settings.devices.get(deviceId);
@@ -312,20 +314,21 @@ export class DeviceNode {
 				this.settings.devices.set(deviceId, device);
 				this.#node.debug(`Created and stored new device instance for key: ${deviceId}`);
 			}
-			if (this.#config.action !== 'unsubscribe') {
+			const requiresConnection = !['startMonitoring', 'stopMonitoring', 'unsubscribe'].includes(action);
+			if (requiresConnection) {
 				this.#node.status({ fill: 'blue', shape: 'dot', text: `Connecting (${this.client.config.connectionType || 'auto'})...` });
 				await device.connect();
 			}
-			this.#node.debug(`Action: ${this.#config.action}, Property: ${property}`);
-			switch (this.#config.action) {
+			this.#node.debug(`Action: ${action}, Property: ${property}`);
+			switch (action) {
 				case 'getProperties':
 				case 'getProperty': {
 					this.#node.status({ fill: 'blue', shape: 'dot', text: `Getting ${formattedProperty}...` });
-					const payload = this.#config.action === 'getProperties' ? await device.getProperties() : await device.getProperty(property);
+					const payload = action === 'getProperties' ? await device.getProperties() : await device.getProperty(property);
 					const text = this.formatPropertyForStatus(payload);
 					this.#node.debug(`Got property/ies: ${JSON.stringify(payload)}`);
 					msg.payload = payload;
-					msg.topic = topic || msg.topic || `property/${(this.#config.action === 'getProperties') ? '' : property}`;
+					msg.topic = topic || msg.topic || `property/${(action === 'getProperties') ? '' : property}`;
 					send([msg, null]);
 					this.values.set(deviceId, text);
 					this.#node.status({ fill: 'green', shape: 'dot', text });
@@ -456,7 +459,7 @@ export class DeviceNode {
 					payload: {
 						event: 'error',
 						error: err.message,
-						action: this.#config.action,
+						action,
 						sourceMessage: msg,
 						device: deviceConfig
 					}
