@@ -534,12 +534,13 @@ export default class Bluetooth extends EventEmitter {
 						const beacon = new MiBeacon(this, device, properties.ServiceData[id], id);
 						const parsed = beacon.parse();
 						if (parsed) {
-							const msg = {
-								rssi: properties.RSSI ?? this.#rssi.get(device),
-								...parsed
-							};
-							this.emit(`advertisement:${parsed.mac}`, msg);
-							this.emit('advertisement', msg);
+							const rssi = properties.RSSI ?? this.#rssi.get(device);
+							this.emit(`advertisement:${parsed.mac}`, {
+								rssi,
+								ts: parsed.ts,
+								payload: parsed.payload
+							});
+							this.emit('advertisement', { rssi, ...parsed });
 						}
 					}
 				}

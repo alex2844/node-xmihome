@@ -292,6 +292,10 @@ export default class Device extends EventEmitter {
 	 */
 	#disconnectPromise;
 
+	/**
+	 * Счетчик активных подписок на мониторинг
+	 * @type {number}
+	 */
 	#monitoringCount = 0;
 
 	/**
