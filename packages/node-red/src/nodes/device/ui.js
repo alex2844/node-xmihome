@@ -19,7 +19,7 @@ function validateDevice() {
 };
 
 function getIdType(/** @type {Device} */ device) {
-	if (device.address && device.token)
+	if (device.address && device.token && !device.id.startsWith('blt.'))
 		return 'miio';
 	else if (device.mac && device.model)
 		return 'bluetooth';
@@ -137,9 +137,9 @@ function onchangedevice(/** @type {JQuery.ChangeEvent<HTMLElement, null>} */ eve
 					typedinputContainer.hide();
 					discoveredContainer.show();
 					if ((discoveredDevicesCache.length === 0) || ((Date.now() - lastCacheTimestamp) > CACHE_TTL))
-					fetchDiscoveredDevices();
+						fetchDiscoveredDevices();
 					else
-					devicesDropdown(discoveredDevicesCache);
+						devicesDropdown(discoveredDevicesCache);
 					break;
 				};
 				case 'msg': {
