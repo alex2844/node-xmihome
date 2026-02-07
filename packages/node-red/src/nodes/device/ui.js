@@ -170,9 +170,10 @@ function onchangedevice(/** @type {JQuery.ChangeEvent<HTMLElement, null>} */ eve
 };
 
 function onchangeaction() {
+    const type = $('#node-input-actionType').val();
 	const value = $(this).val();
-	$('#node-config-row-property').toggle(value !== 'getProperties');
-	$('#node-config-row-value').toggle(['setProperty', 'callAction', 'callMethod'].includes(value));
+	$('#node-config-row-property').toggle(!['getProperties', 'startMonitoring', 'stopMonitoring'].includes(value));
+	$('#node-config-row-value').toggle(type === 'msg' || ['setProperty', 'callAction', 'callMethod'].includes(value));
 };
 
 function onchangeproperty() {

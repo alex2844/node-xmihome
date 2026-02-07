@@ -72,6 +72,12 @@ export class ConfigNode {
 	subscriptions = new Map();
 
 	/**
+	 * Хранилище активных подписок на мониторинг рекламных пакетов.
+	 * @type {Map<string, {device: Device, callback: Function}>}
+	 */
+	monitoringSubscriptions = new Map();
+
+	/**
 	 * Таймеры для отложенного отключения от устройств.
 	 * @type {Map<string, NodeJS.Timeout>}
 	 */

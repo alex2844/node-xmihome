@@ -9,7 +9,7 @@ import Device from 'xmihome/device.js';
  *   settings: string;
  *   device: string;
  *   deviceType: 'json'|'msg';
- *   action: 'getProperties'|'getProperty'|'setProperty'|'callAction'|'callMethod'|'subscribe'|'unsubscribe';
+ *   action: 'getProperties'|'getProperty'|'setProperty'|'callAction'|'callMethod'|'subscribe'|'unsubscribe'|'startMonitoring'|'stopMonitoring';
  *   property: string;
  *   propertyType: 'str'|'msg'|'flow'|'global'|'json';
  *   value: string;
@@ -406,6 +406,45 @@ export class DeviceNode {
 					}
 					break;
 				};
+				case 'startMonitoring': {
+					this.#node.status({ fill: 'yellow', shape: 'dot', text: `Monitoring...` });
+					const subscriptionKey = `${deviceId}_monitoring`;
+					if (this.settings.monitoringSubscriptions.has(subscriptionKey)) {
+						this.#node.warn(`Already monitoring device ${deviceId}. Ignoring.`);
+						this.#node.status({ fill: 'yellow', shape: 'ring', text: `Monitoring` });
+					} else {
+						const callback = (/** @type {any} */ payload) => {
+							this.#node.debug(`Advertisement received for ${deviceConfig.mac}: ${JSON.stringify(payload)}`);
+							send([{
+								_msgid: this.#RED.util.generateId(),
+								...payload,
+								device: deviceConfig,
+								topic: topic || msg.topic || `advertisement/${deviceConfig.mac}`
+							}, null]);
+							this.#node.status({ fill: 'yellow', shape: 'ring', text: `Monitoring` });
+						};
+						this.settings.monitoringSubscriptions.set(subscriptionKey, { device, callback });
+						await device.startMonitoring(callback);
+						this.#node.log(`Successfully started monitoring advertisements for device ${deviceId}`);
+						this.#node.status({ fill: 'yellow', shape: 'ring', text: `Monitoring` });
+					}
+					break;
+				};
+				case 'stopMonitoring': {
+					this.#node.status({ fill: 'blue', shape: 'dot', text: `Stopping monitoring...` });
+					const subscriptionKey = `${deviceId}_monitoring`;
+					if (this.settings.monitoringSubscriptions.has(subscriptionKey)) {
+						const { device: monitoredDevice } = this.settings.monitoringSubscriptions.get(subscriptionKey);
+						await monitoredDevice.stopMonitoring();
+						this.settings.monitoringSubscriptions.delete(subscriptionKey);
+						this.#node.log(`Successfully stopped monitoring advertisements for device ${deviceId}`);
+						this.#node.status({ fill: 'grey', shape: 'ring', text: `Monitoring stopped` });
+					} else {
+						this.#node.warn(`Not monitoring device ${deviceId}. Cannot unsubscribe.`);
+						this.#node.status({});
+					}
+					break;
+				};
 			};
 		} catch (err) {
 			result = err;
@@ -456,6 +495,7 @@ export class DeviceNode {
 		}
 		this.settings.disconnectTimers.clear();
 		this.settings.subscriptions.clear();
+		this.settings.monitoringSubscriptions.clear();
 		this.settings.devices.clear();
 		this.values.clear();
 		this.#node.status({});
