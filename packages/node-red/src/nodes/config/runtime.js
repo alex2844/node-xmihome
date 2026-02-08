@@ -4,6 +4,7 @@ import { CACHE_TTL } from 'xmihome/constants.js';
 /** @import { default as Device, Config as DeviceConfig } from 'xmihome/device.js' */
 /** @import { Node, NodeAPI, NodeDef } from 'node-red' */
 /** @import { Request, Response } from 'express' */
+/** @import { DeviceNode } from '../device/runtime.js' */
 
 /**
  * Глобальный Map для отслеживания активных процессов обновления списка устройств.
@@ -67,15 +68,15 @@ export class ConfigNode {
 
 	/**
 	 * Хранилище активных подписок на уведомления от устройств.
-	 * @type {Map<string, {device: Device, property: string, callback: Function}>}
+	 * Ключ: `${deviceId}_${property}` или `${deviceId}_monitoring`
+	 * @type {Map<string, {
+	 *   device: Device,
+	 *   property?: string,
+	 *   callback: Function,
+	 *   nodes: Set<DeviceNode>
+	 * }>}
 	 */
 	subscriptions = new Map();
-
-	/**
-	 * Хранилище активных подписок на мониторинг рекламных пакетов.
-	 * @type {Map<string, {device: Device, callback: Function}>}
-	 */
-	monitoringSubscriptions = new Map();
 
 	/**
 	 * Таймеры для отложенного отключения от устройств.

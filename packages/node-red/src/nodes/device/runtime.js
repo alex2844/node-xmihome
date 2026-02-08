@@ -58,6 +58,18 @@ export class DeviceNode {
 	values = new Map();
 
 	/**
+	 * Уникальный идентификатор устройства.
+	 * @type {string}
+	 */
+	#deviceId;
+
+	/**
+	 * Флаг, указывающий, что этот узел использует действия, требующие отображения статуса подключения
+	 * @type {boolean}
+	 */
+	#shouldShowConnectionStatus = true;
+
+	/**
 	 * @param {NodeInstance} node
 	 * @param {ConfigDef} config
 	 * @param {NodeAPI} RED
@@ -89,12 +101,32 @@ export class DeviceNode {
 	};
 
 	/**
+	 * Проверяет, активен ли режим мониторинга.
+	 * @returns {boolean}
+	 */
+	get isMonitoring() {
+		return this.#deviceId && this.settings.subscriptions.has(`${this.#deviceId}_monitoring`);
+	};
+
+	/**
+	 * Проверяет наличие активных подписок на свойства устройства.
+	 * @returns {boolean}
+	 */
+	get hasSubscriptions() {
+		if (!this.#deviceId)
+			return false;
+		return [...this.settings.subscriptions.keys()].some(key => key.startsWith(this.#deviceId) && key !== `${this.#deviceId}_monitoring`);
+	};
+
+	/**
 	 * Генерирует уникальный идентификатор устройства на основе его конфигурации.
 	 * @param {DeviceConfig} device
 	 * @returns {string}
 	 */
 	getDeviceId(device) {
-		return Device.getDeviceId(device);
+		if (!this.#deviceId)
+			this.#deviceId = Device.getDeviceId(device);
+		return this.#deviceId;
 	};
 
 	/**
@@ -160,19 +192,41 @@ export class DeviceNode {
 	};
 
 	/**
-	 * @param {string} deviceId
+	 * Обновляет статус подписки для этого узла
+	 * @param {string|null} property - null для сброса статуса
 	 */
-	#connected(deviceId) {
-		if (this.settings.disconnectTimers.has(deviceId)) {
-			clearTimeout(this.settings.disconnectTimers.get(deviceId));
-			this.settings.disconnectTimers.delete(deviceId);
+	#updateSubscriptionStatus(property = null) {
+		if (property) {
+			const formattedProperty = this.formatPropertyForStatus(property);
+			this.#node.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${formattedProperty}` });
+		} else
+			this.#node.status({ fill: 'grey', shape: 'ring', text: 'Unsubscribed' });
+	};
+
+	/**
+	 * Обновляет статус мониторинга для этого узла
+	 * @param {boolean} active
+	 */
+	#updateMonitoringStatus(active) {
+		if (active)
+			this.#node.status({ fill: 'yellow', shape: 'ring', text: 'Monitoring' });
+		else
+			this.#node.status({ fill: 'grey', shape: 'ring', text: 'Monitoring stopped' });
+	};
+
+	#connected() {
+		if (!this.#shouldShowConnectionStatus)
+			return;
+		if (this.settings.disconnectTimers.has(this.#deviceId)) {
+			clearTimeout(this.settings.disconnectTimers.get(this.#deviceId));
+			this.settings.disconnectTimers.delete(this.#deviceId);
 		}
-		const device = this.settings.devices.get(deviceId);
+		const device = this.settings.devices.get(this.#deviceId);
 		if (device) {
 			this.#node.status({ fill: 'green', shape: 'dot', text: `Connected: ${device.connectionType}` });
 			this.#node.send([null, {
 				_msgid: this.#RED.util.generateId(),
-				topic: `connection/${deviceId}/connected`,
+				topic: `connection/${this.#deviceId}/connected`,
 				payload: {
 					device: device.config,
 					connectionType: device.connectionType,
@@ -183,46 +237,50 @@ export class DeviceNode {
 	};
 
 	/**
-	 * @param {string} deviceId
 	 * @param {number} [ms]
 	 */
-	#disconnect(deviceId, ms = 200) {
-		const text = this.values.get(deviceId) || 'Disconnected';
-		if (this.settings.devices.has(deviceId))
-			this.settings.disconnectTimers.set(deviceId, setTimeout(() => {
-				this.#node.status({ fill: 'grey', shape: 'ring', text });
-				const device = this.settings.devices.get(deviceId);
-				if (device) {
+	#disconnect(ms = 200) {
+		const text = this.values.get(this.#deviceId) || 'Disconnected';
+		if (this.settings.devices.has(this.#deviceId))
+			this.settings.disconnectTimers.set(this.#deviceId, setTimeout(() => {
+				const device = this.settings.devices.get(this.#deviceId);
+				if (!device || this.hasSubscriptions) {
+					this.settings.disconnectTimers.delete(this.#deviceId);
+					return;
+				}
+				if (this.#shouldShowConnectionStatus) {
+					this.#node.status({ fill: 'grey', shape: 'ring', text });
 					this.#node.send([null, {
 						_msgid: this.#RED.util.generateId(),
-						topic: `connection/${deviceId}/disconnected`,
+						topic: `connection/${this.#deviceId}/disconnected`,
 						payload: {
 							device: device.config,
 							event: 'disconnected'
 						}
 					}]);
-					this.#cleanup(deviceId);
 				}
-				this.settings.disconnectTimers.delete(deviceId);
+				this.#cleanup();
+				this.settings.disconnectTimers.delete(this.#deviceId);
 			}, ms));
 	};
 
 	/**
-	 * @param {string} deviceId
 	 * @param {object} _
 	 * @param {string} _.reason
 	 */
-	#reconnecting(deviceId, { reason }) {
-		if (this.settings.disconnectTimers.has(deviceId)) {
-			clearTimeout(this.settings.disconnectTimers.get(deviceId));
-			this.settings.disconnectTimers.delete(deviceId);
+	#reconnecting({ reason }) {
+		if (!this.#shouldShowConnectionStatus)
+			return;
+		if (this.settings.disconnectTimers.has(this.#deviceId)) {
+			clearTimeout(this.settings.disconnectTimers.get(this.#deviceId));
+			this.settings.disconnectTimers.delete(this.#deviceId);
 		}
-		const device = this.settings.devices.get(deviceId);
+		const device = this.settings.devices.get(this.#deviceId);
 		if (device) {
 			this.#node.status({ fill: 'yellow', shape: 'dot', text: `Reconnecting` });
 			this.#node.send([null, {
 				_msgid: this.#RED.util.generateId(),
-				topic: `connection/${deviceId}/reconnecting`,
+				topic: `connection/${this.#deviceId}/reconnecting`,
 				payload: {
 					reason,
 					device: device.config,
@@ -233,48 +291,46 @@ export class DeviceNode {
 	};
 
 	/**
-	 * @param {string} deviceId
 	 * @param {object} _
 	 * @param {number} _.attempts
 	 * @param {string} _.error
 	 */
-	#reconnectFailed(deviceId, { attempts, error }) {
-		if (this.settings.disconnectTimers.has(deviceId)) {
-			clearTimeout(this.settings.disconnectTimers.get(deviceId));
-			this.settings.disconnectTimers.delete(deviceId);
+	#reconnectFailed({ attempts, error }) {
+		if (!this.#shouldShowConnectionStatus)
+			return;
+		if (this.settings.disconnectTimers.has(this.#deviceId)) {
+			clearTimeout(this.settings.disconnectTimers.get(this.#deviceId));
+			this.settings.disconnectTimers.delete(this.#deviceId);
 		}
-		const device = this.settings.devices.get(deviceId);
+		const device = this.settings.devices.get(this.#deviceId);
 		if (device) {
 			this.#node.status({ fill: 'red', shape: 'ring', text: `Reconnect failed` });
 			this.#node.send([null, {
 				_msgid: this.#RED.util.generateId(),
-				topic: `connection/${deviceId}/reconnect_failed`,
+				topic: `connection/${this.#deviceId}/reconnect_failed`,
 				payload: {
 					attempts, error,
 					device: device.config,
 					event: 'reconnect_failed'
 				}
 			}]);
-			this.#cleanup(deviceId);
+			this.#cleanup();
 		}
 	};
 
-	/**
-	 * @param {string} deviceId
-	 */
-	async #cleanup(deviceId) {
-		const device = this.settings.devices.get(deviceId);
+	async #cleanup() {
+		const device = this.settings.devices.get(this.#deviceId);
 		if (!device)
 			return;
-		this.#node.debug(`Cleaning up and disconnecting device: ${deviceId}`);
+		this.#node.debug(`Cleaning up and disconnecting device: ${this.#deviceId}`);
 		try {
 			await device.disconnect();
 		} catch (err) {
-			this.#node.error(`Error during cleanup disconnect for ${deviceId}: ${err}`)
+			this.#node.error(`Error during cleanup disconnect for ${this.#deviceId}: ${err}`)
 		}
 		device.removeAllListeners();
-		this.settings.devices.delete(deviceId);
-		this.values.delete(deviceId);
+		this.settings.devices.delete(this.#deviceId);
+		this.values.delete(this.#deviceId);
 	};
 
 	/**
@@ -285,41 +341,51 @@ export class DeviceNode {
 	async #input(msg, send, done) {
 		let result, device, deviceConfig, deviceId;
 		this.#node.status({ fill: 'blue', shape: 'dot', text: 'Getting device...' });
+
+		const action = this.#RED.util.evaluateNodeProperty(this.#config.action, this.#config.actionType, this.#node, msg);
 		const topic = this.#RED.util.evaluateNodeProperty(this.#config.topic, this.#config.topicType, this.#node, msg);
 		const value = this.#RED.util.evaluateNodeProperty(this.#config.value, this.#config.valueType, this.#node, msg);
 		const property = this.#RED.util.evaluateNodeProperty(this.#config.property, this.#config.propertyType, this.#node, msg);
-		const action = this.#RED.util.evaluateNodeProperty(this.#config.action, this.#config.actionType, this.#node, msg);
 		const formattedProperty = this.formatPropertyForStatus(property);
+
+		this.#shouldShowConnectionStatus = !['startMonitoring', 'stopMonitoring'].includes(action);
+
 		try {
 			deviceConfig = this.getDeviceConfig(msg);
 			deviceId = this.getDeviceId(deviceConfig);
+
 			if (this.settings.disconnectTimers.has(deviceId)) {
 				this.#node.debug(`Cancelling pending disconnect for ${deviceId} due to new command.`);
 				clearTimeout(this.settings.disconnectTimers.get(deviceId));
 				this.settings.disconnectTimers.delete(deviceId);
 			}
+
 			if (!['getProperties', 'getProperty', 'setProperty', 'callAction', 'callMethod', 'subscribe', 'unsubscribe', 'startMonitoring', 'stopMonitoring'].includes(action))
 				throw new Error(`Invalid action specified: ${action}`);
 			if ((!['getProperties', 'startMonitoring', 'stopMonitoring'].includes(action)) && !property)
 				throw new Error('Property name is missing (configure node or provide msg.property)');
+
 			if (this.settings.devices.has(deviceId)) {
 				device = this.settings.devices.get(deviceId);
 				this.#node.debug(`Using existing device instance for key: ${deviceId}`);
 			} else {
 				device = await this.client.getDevice(deviceConfig);
-				device.on('connected', this.#connected.bind(this, deviceId));
-				device.on('disconnect', this.#disconnect.bind(this, deviceId));
-				device.on('reconnecting', this.#reconnecting.bind(this, deviceId));
-				device.on('reconnect_failed', this.#reconnectFailed.bind(this, deviceId));
+				device.on('connected', this.#connected.bind(this));
+				device.on('disconnect', this.#disconnect.bind(this));
+				device.on('reconnecting', this.#reconnecting.bind(this));
+				device.on('reconnect_failed', this.#reconnectFailed.bind(this));
 				this.settings.devices.set(deviceId, device);
 				this.#node.debug(`Created and stored new device instance for key: ${deviceId}`);
 			}
+
 			const requiresConnection = !['startMonitoring', 'stopMonitoring', 'unsubscribe'].includes(action);
 			if (requiresConnection) {
 				this.#node.status({ fill: 'blue', shape: 'dot', text: `Connecting (${this.client.config.connectionType || 'auto'})...` });
 				await device.connect();
 			}
+
 			this.#node.debug(`Action: ${action}, Property: ${property}`);
+
 			switch (action) {
 				case 'getProperties':
 				case 'getProperty': {
@@ -373,36 +439,55 @@ export class DeviceNode {
 				case 'subscribe': {
 					this.#node.status({ fill: 'yellow', shape: 'dot', text: `Subscribing to ${formattedProperty}...` });
 					const subscriptionKey = `${deviceId}_${formattedProperty}`;
+
 					if (this.settings.subscriptions.has(subscriptionKey)) {
-						this.#node.warn(`Already subscribed to ${property} for device ${deviceId}. Ignoring.`);
-						this.#node.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
+						const subscription = this.settings.subscriptions.get(subscriptionKey);
+						subscription.nodes.add(this);
+						this.#node.warn(`Already subscribed to ${property} for device ${deviceId}. Adding node to existing subscription.`);
+						this.#updateSubscriptionStatus(property);
 					} else {
 						const callback = (/** @type {any} */ payload) => {
 							this.#node.debug(`Notification received for ${property}: ${JSON.stringify(payload)}`);
-							send([{
-								_msgid: this.#RED.util.generateId(),
-								payload, property,
-								device: deviceConfig,
-								topic: topic || msg.topic || `notify/${property}`
-							}, null]);
-							this.#node.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
+							const subscription = this.settings.subscriptions.get(subscriptionKey);
+							if (subscription)
+								for (const nodeInstance of subscription.nodes) {
+									nodeInstance.#node.send([{
+										_msgid: this.#RED.util.generateId(),
+										payload, property,
+										device: deviceConfig,
+										topic: topic || msg.topic || `notify/${property}`
+									}, null]);
+								}
 						};
-						this.settings.subscriptions.set(subscriptionKey, { device, property, callback });
+						this.settings.subscriptions.set(subscriptionKey, {
+							device,
+							property,
+							callback,
+							nodes: new Set([this])
+						});
+
 						await device.startNotify(property, callback);
 						this.#node.log(`Successfully subscribed to ${property} for device ${deviceId}`);
-						this.#node.status({ fill: 'yellow', shape: 'ring', text: `Subscribed: ${property}` });
+						this.#updateSubscriptionStatus(property);
 					}
 					break;
 				};
 				case 'unsubscribe': {
 					this.#node.status({ fill: 'blue', shape: 'dot', text: `Unsubscribing from ${formattedProperty}...` });
 					const subscriptionKey = `${deviceId}_${formattedProperty}`;
+
 					if (this.settings.subscriptions.has(subscriptionKey)) {
 						const subscription = this.settings.subscriptions.get(subscriptionKey);
 						await subscription.device.stopNotify(subscription.property);
+
+						for (const nodeInstance of subscription.nodes) {
+							nodeInstance.#updateSubscriptionStatus(null);
+						}
+
 						this.settings.subscriptions.delete(subscriptionKey);
+
 						this.#node.log(`Successfully unsubscribed from ${property} for device ${deviceId}`);
-						this.#node.status({ fill: 'grey', shape: 'ring', text: `Unsubscribed` });
+						this.#node.status({ fill: 'grey', shape: 'ring', text: 'Unsubscribed' });
 					} else {
 						this.#node.warn(`Not subscribed to ${property} for device ${deviceId}. Cannot unsubscribe.`);
 						this.#node.status({});
@@ -410,38 +495,57 @@ export class DeviceNode {
 					break;
 				};
 				case 'startMonitoring': {
-					this.#node.status({ fill: 'yellow', shape: 'dot', text: `Monitoring...` });
+					this.#node.status({ fill: 'yellow', shape: 'dot', text: 'Starting monitoring...' });
 					const subscriptionKey = `${deviceId}_monitoring`;
-					if (this.settings.monitoringSubscriptions.has(subscriptionKey)) {
-						this.#node.warn(`Already monitoring device ${deviceId}. Ignoring.`);
-						this.#node.status({ fill: 'yellow', shape: 'ring', text: `Monitoring` });
+
+					if (this.settings.subscriptions.has(subscriptionKey)) {
+						const subscription = this.settings.subscriptions.get(subscriptionKey);
+						subscription.nodes.add(this);
+						this.#node.warn(`Already monitoring device ${deviceId}. Adding node to existing monitoring.`);
+						this.#updateMonitoringStatus(true);
 					} else {
 						const callback = (/** @type {any} */ payload) => {
 							this.#node.debug(`Advertisement received for ${deviceConfig.mac}: ${JSON.stringify(payload)}`);
-							send([{
-								_msgid: this.#RED.util.generateId(),
-								...payload,
-								device: deviceConfig,
-								topic: topic || msg.topic || `advertisement/${deviceConfig.mac}`
-							}, null]);
-							this.#node.status({ fill: 'yellow', shape: 'ring', text: `Monitoring` });
+							const subscription = this.settings.subscriptions.get(subscriptionKey);
+							if (subscription)
+								for (const nodeInstance of subscription.nodes) {
+									nodeInstance.#node.send([{
+										_msgid: this.#RED.util.generateId(),
+										...payload,
+										device: deviceConfig,
+										topic: topic || msg.topic || `advertisement/${deviceConfig.mac}`
+									}, null]);
+								}
 						};
-						this.settings.monitoringSubscriptions.set(subscriptionKey, { device, callback });
+
+						this.settings.subscriptions.set(subscriptionKey, {
+							device,
+							callback,
+							nodes: new Set([this])
+						});
+
 						await device.startMonitoring(callback);
 						this.#node.log(`Successfully started monitoring advertisements for device ${deviceId}`);
-						this.#node.status({ fill: 'yellow', shape: 'ring', text: `Monitoring` });
+						this.#updateMonitoringStatus(true);
 					}
 					break;
 				};
 				case 'stopMonitoring': {
-					this.#node.status({ fill: 'blue', shape: 'dot', text: `Stopping monitoring...` });
+					this.#node.status({ fill: 'blue', shape: 'dot', text: 'Stopping monitoring...' });
 					const subscriptionKey = `${deviceId}_monitoring`;
-					if (this.settings.monitoringSubscriptions.has(subscriptionKey)) {
-						const { device: monitoredDevice } = this.settings.monitoringSubscriptions.get(subscriptionKey);
-						await monitoredDevice.stopMonitoring();
-						this.settings.monitoringSubscriptions.delete(subscriptionKey);
+
+					if (this.settings.subscriptions.has(subscriptionKey)) {
+						const subscription = this.settings.subscriptions.get(subscriptionKey);
+						await subscription.device.stopMonitoring();
+
+						for (const nodeInstance of subscription.nodes) {
+							nodeInstance.#updateMonitoringStatus(false);
+						}
+
+						this.settings.subscriptions.delete(subscriptionKey);
+
 						this.#node.log(`Successfully stopped monitoring advertisements for device ${deviceId}`);
-						this.#node.status({ fill: 'grey', shape: 'ring', text: `Monitoring stopped` });
+						this.#node.status({ fill: 'grey', shape: 'ring', text: 'Monitoring stopped' });
 					} else {
 						this.#node.warn(`Not monitoring device ${deviceId}. Cannot unsubscribe.`);
 						this.#node.status({});
@@ -465,11 +569,8 @@ export class DeviceNode {
 					}
 				}]);
 		} finally {
-			if (device && (this.#config.action !== 'subscribe')) {
-				const deviceHasSubscriptions = [...this.settings.subscriptions.keys()].some(key => key.startsWith(deviceId));
-				if (!deviceHasSubscriptions)
-					this.#disconnect(deviceId, ((this.#config.action === 'unsubscribe') ? 0 : 30_000));
-			}
+			if (device && (action !== 'subscribe') && !this.hasSubscriptions)
+				this.#disconnect((action === 'unsubscribe' || this.isMonitoring) ? 0 : 30_000);
 		}
 		done(result);
 	};
@@ -481,24 +582,33 @@ export class DeviceNode {
 	async #close(removed, done) {
 		const cleanupPromises = [];
 		this.#node.debug(`Node closing, cleaning up all active connections and subscriptions... (removed: ${!!removed})`);
+
+		for (const [key, subscription] of this.settings.subscriptions.entries()) {
+			subscription.nodes.delete(this);
+			if (subscription.nodes.size === 0)
+				this.#node.debug(`No more nodes using subscription ${key}, cleaning up...`);
+		}
+
 		for (const timerId of this.settings.disconnectTimers.values()) {
 			clearTimeout(timerId);
 		}
+
 		for (const [key, device] of this.settings.devices.entries()) {
 			this.#node.debug(`Disconnecting device instance for key: ${key}`);
 			cleanupPromises.push(
 				device.disconnect().catch(err => this.#node.error(`Error during cleanup disconnect for ${key}: ${err}`))
 			);
 		}
+
 		try {
 			await Promise.all(cleanupPromises);
 			this.#node.log('All active device connections closed.');
 		} catch (err) {
 			this.#node.error('Error during connection cleanup on node close.');
 		}
+
 		this.settings.disconnectTimers.clear();
 		this.settings.subscriptions.clear();
-		this.settings.monitoringSubscriptions.clear();
 		this.settings.devices.clear();
 		this.values.clear();
 		this.#node.status({});
