@@ -747,7 +747,7 @@ export default class Device extends EventEmitter {
 		this.#monitoringCount++;
 		this.client.bluetooth.registerBindKey(this.config.mac, this.config.bindkey);
 		this.client.bluetooth.on(`advertisement:${this.config.mac}`, msg => {
-			const rssiChanged = this.#state.rssi === undefined || Math.abs(msg.rssi - this.#state.rssi) >= 3;
+			const rssiChanged = this.#state.rssi === undefined || Math.abs(msg.rssi - this.#state.rssi) >= 10;
 			const params = { ...this.#state.params, ...msg.payload };
 			const paramsStr = JSON.stringify(params);
 			if (paramsStr !== lastValue || rssiChanged) {
