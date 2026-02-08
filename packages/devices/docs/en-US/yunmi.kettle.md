@@ -9,6 +9,8 @@ Class for managing the Mi Smart Kettle.
 ## Aliases
 
 - `MiKettle`
+- `YM-K1501`
+- `YM-K1501EU`
 
 ## Configuration
 

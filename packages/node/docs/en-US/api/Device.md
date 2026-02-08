@@ -41,6 +41,21 @@ Finds the appropriate class for a device based on its `model` or `name`.
 
 - `typeof Device \| undefined`: The found device class or `undefined`.
 
+### `valid(device, model)`
+
+Checks if the provided device configuration matches a specific model class.
+
+**Parameters:**
+
+| Name     | Type     | Description                          |
+| -------- | -------- | ------------------------------------ |
+| `device` | `object` | The device configuration object.     |
+| `model`  | `class`  | The device class (constructor).      |
+
+**Returns:**
+
+- `boolean`: `true` if it matches, `false` otherwise.
+
 ### `create(device, client)`
 
 Creates an instance of the correct device class (`Device` or a subclass)
@@ -241,6 +256,30 @@ Unsubscribes from notifications for a property.
 | Name   | Type              | Description                                                                |
 | ------ | ----------------- | -------------------------------------------------------------------------- |
 | `prop` | `string \| object` | The name of the property or property definition object to unsubscribe from. |
+
+**Returns:**
+
+- `Promise<void>`
+
+### `startMonitoring(callback)`
+
+Starts passive monitoring of the device's advertisement packets. This is
+only available for Bluetooth devices and does not require a persistent
+connection.
+
+**Parameters:**
+
+| Name       | Type       | Description                                                |
+| ---------- | ---------- | ---------------------------------------------------------- |
+| `callback` | `function` | The function to be called with the parsed advertisement data. |
+
+**Returns:**
+
+- `Promise<void>`
+
+### `stopMonitoring()`
+
+Stops the passive monitoring of advertisement packets.
 
 **Returns:**
 

@@ -1,14 +1,15 @@
 # CLI
 
-The `@xmihome/node` package includes a command-line interface (CLI)
-to manage your Xiaomi devices. It helps with authentication and device
-discovery.
+The `@xmihome/node` package includes command-line tools to manage your
+Xiaomi devices.
 
 ## Commands
 
-The CLI supports two main commands: `login` and `devices`.
+### `xmihome`
 
-### `login`
+The main command for authentication and discovery.
+
+#### `login`
 
 This command allows you to interactively log in to the Xiaomi Cloud.
 Successful authentication will save your credentials to a local file
@@ -26,11 +27,7 @@ xmihome login [options]
 - `-p, --password`: Your Xiaomi account password.
 - `-c, --country`: The country code for your account (e.g., `ru`, `us`, `cn`).
 
-If you run the command without options, it will prompt you to enter them
-interactively. The CLI also supports two-factor authentication (2FA) by
-asking you to input a code sent to your device.
-
-### `devices`
+#### `devices`
 
 This command lists all your devices, discovering them from the local
 network (miIO and Bluetooth) and/or the Xiaomi Cloud.
@@ -48,12 +45,23 @@ xmihome devices [options]
   - `miio`: Discovers only miIO (Wi-Fi) devices on the local network.
   - `bluetooth`: Discovers only Bluetooth LE devices nearby.
   - `cloud`: Fetches the device list from the Xiaomi Cloud (requires login).
-- `--force`: Forces a new discovery, ignoring any cached results. The CLI
-    caches device lists to speed up subsequent calls.
+- `--force`: Forces a new discovery, ignoring any cached results.
 
-**Global Options:**
+### `xmihome-setup-bluetooth`
 
-- `--verbose`: Runs the command with detailed logging, which is useful for
-    debugging.
-- `-h, --help`: Shows the help message.
-- `-v, --version`: Shows the package version.
+A utility to simplify Bluetooth configuration on Linux systems. It generates
+D-Bus policy files to grant permissions and can set up a proxy for remote
+Bluetooth access.
+
+**Usage:**
+
+```bash
+xmihome-setup-bluetooth [options]
+```
+
+**Options:**
+
+- `--remote`: Generate configuration for remote D-Bus access via TCP proxy.
+- `--port`: Port for remote access (default: 55555).
+- `--host`: Host to listen on (default: 0.0.0.0).
+- `--help, -h`: Show help message.

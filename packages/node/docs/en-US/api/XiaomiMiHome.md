@@ -120,3 +120,11 @@ the `NODE_DEBUG=xmihome` environment variable.
 **Returns:**
 
 - `void`
+
+## Events
+
+The `XiaomiMiHome` class emits the following events:
+
+| Event   | Payload  | Description                                              |
+| ------- | -------- | -------------------------------------------------------- |
+| `login` | `object` | Emitted after a successful cloud login, contains tokens. |

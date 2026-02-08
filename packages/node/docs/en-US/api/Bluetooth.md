@@ -17,6 +17,18 @@ recommended way to create a standalone instance.
 
 ## Methods
 
+### `registerBindKey(mac, bindkey)`
+
+Registers a bindkey for a specific device. This is required for decrypting
+advertisements from protected MiBeacon (BLE) devices.
+
+**Parameters:**
+
+| Name      | Type     | Description                             |
+| --------- | -------- | --------------------------------------- |
+| `mac`     | `string` | The MAC address of the device.          |
+| `bindkey` | `string` | The 16-byte hex-encoded decryption key. |
+
 ### `checkBlueZService()`
 
 Checks if the BlueZ service (the standard Linux Bluetooth stack) is
@@ -83,6 +95,36 @@ Waits for a specific Bluetooth device to be discovered.
 - `Promise<object>`: A promise that resolves with the configuration object of
   the found device.
 
+### `removeDevice(mac)`
+
+Removes the device from the BlueZ cache and disconnects it if connected.
+
+**Parameters:**
+
+| Name  | Type     | Description                    |
+| ----- | -------- | ------------------------------ |
+| `mac` | `string` | The MAC address of the device. |
+
+**Returns:**
+
+- `Promise<boolean>`
+
+### `startMonitoring()`
+
+Starts the passive monitoring mode for advertisement packets.
+
+**Returns:**
+
+- `Promise<boolean>`
+
+### `stopMonitoring()`
+
+Stops the passive monitoring mode.
+
+**Returns:**
+
+- `Promise<void>`
+
 ### `defaultAdapter(device)`
 
 Initializes the default Bluetooth adapter. This method is usually called
@@ -120,3 +162,13 @@ Releases resources, stops scanning, and disconnects all connected devices.
 **Returns:**
 
 - `Promise<void>`
+
+## Events
+
+The `Bluetooth` class emits the following events:
+
+| Event           | Payload  | Description                                        |
+| --------------- | -------- | -------------------------------------------------- |
+| `adapter`       | `object` | Emitted when Bluetooth adapter properties change.   |
+| `available`     | `object` | Emitted when a new Bluetooth device is discovered. |
+| `advertisement` | `object` | Emitted when a BLE advertisement is parsed.        |
