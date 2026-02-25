@@ -22,25 +22,25 @@ Searches for a device specification on `miot-spec.org` by its model name.
 
 ## Properties
 
-| Name          | Type     | Description                                                                                             |
-| ------------- | -------- | ------------------------------------------------------------------------------------------------------- |
-| `credentials` | `object` | Provides access to the cloud credentials (`username`, `password`, `country`, etc.) from the main client configuration. |
-| `miio`        | `object` | Direct access to the `mijia-io` library for low-level MiIO operations.                                  |
+| Name          | Type     | Description                                                                    |
+| ------------- | -------- | ------------------------------------------------------------------------------ |
+| `credentials` | `object` | Access to cloud credentials from the main client configuration.                |
+| `miio`        | `object` | Direct access to the `mijia-io` library for low-level MiIO operations.         |
 
 ## Methods
 
 ### `login(handlers)`
 
-Logs into the Xiaomi account to obtain tokens required for cloud requests.
-It is called automatically on the first cloud request. Supports two-factor
-authentication (2FA) via a callback.
+Logs into the Xiaomi account to obtain tokens. Supports two-factor
+authentication (2FA) and Captcha via callbacks.
 
 **Parameters:**
 
-| Name            | Type                                   | Description                                                                                                                                                                             |
-| --------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `handlers`      | `object`                               | (Optional) An object with handlers for interactive steps.                                                                                                                               |
-| `handlers.on2fa`| `(url: string) => Promise<string>` | (Optional) An async function that is called if 2FA is required. It receives a verification `url` and must return a promise that resolves with the confirmation code (`ticket`) entered by the user. |
+| Name                | Type                               | Description                                                                               |
+| ------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- |
+| `handlers`          | `object`                           | (Optional) An object with handlers for interactive steps.                                 |
+| `handlers.on2fa`    | `(url: str) => Promise<str>`       | (Optional) Async function that receives verification URL and returns confirmation code.   |
+| `handlers.onCaptcha`| `(img: str) => Promise<str>`       | (Optional) Async function that receives captcha image (base64) and returns the text.      |
 
 **Returns:**
 
@@ -83,7 +83,7 @@ Returns the API URL for the specified country.
 **Parameters:**
 
 | Name      | Type     | Description                        |
-| --------- | -------- | ---------------------------------- |
+| --------- | -------- | ------------------------------- |
 | `country` | `string` | The country code (e.g., `ru`, `cn`). |
 
 **Returns:**
@@ -129,3 +129,4 @@ Generates a signed nonce.
 **Returns:**
 
 - `string`: The signed nonce in base64.
+

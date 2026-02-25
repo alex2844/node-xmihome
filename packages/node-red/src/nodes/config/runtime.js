@@ -15,12 +15,13 @@ import { CACHE_TTL } from 'xmihome/constants.js';
 const refreshPromises = new Map();
 
 /**
- * Глобальный Map для хранения "resolve" функций промисов, ожидающих 2FA-тикет.
- * Это позволяет "поставить на паузу" процесс логина и возобновить его из другого HTTP-запроса.
- * Ключ - stateToken (string), значение - функция resolve(ticket: string).
- * @type {Map<string, (ticket: string) => void>}
+ * Глобальный Map для хранения активных сессий авторизации.
+ * Позволяет ставить логин на паузу для ввода 2FA или капчи,
+ * обновляя объект ответа (res) для правильной цепочки запросов.
+ * Ключ - stateToken (string), значение - { resolve, res }.
+ * @type {Map<string, { resolve: ((value: string) => void) | null, res: Response }>}
  */
-const pending2faResolvers = new Map();
+const authSessions = new Map();
 
 /**
  * @typedef {{
@@ -113,9 +114,11 @@ export class ConfigNode {
 		this.endpoint['devices'] = `/xmihome/${this.#node.id}/devices`;
 		this.endpoint['auth'] = `/xmihome/${this.#node.id}/auth`;
 		this.endpoint['auth_ticket'] = `/xmihome/${this.#node.id}/auth/submit_ticket`;
+		this.endpoint['auth_captcha'] = `/xmihome/${this.#node.id}/auth/submit_captcha`;
 		this.#RED.httpAdmin.get(this.endpoint['devices'], RED.auth.needsPermission('xmihome-config.read'), this.#getDevicesHandler.bind(this));
 		this.#RED.httpAdmin.post(this.endpoint['auth'], RED.auth.needsPermission('xmihome-config.write'), this.#handleAuth.bind(this));
 		this.#RED.httpAdmin.post(this.endpoint['auth_ticket'], RED.auth.needsPermission('xmihome-config.write'), this.#handleAuthSubmitTicket.bind(this));
+		this.#RED.httpAdmin.post(this.endpoint['auth_captcha'], RED.auth.needsPermission('xmihome-config.write'), this.#handleAuthSubmitCaptcha.bind(this));
 		this.#node.on('close', this.#close.bind(this));
 	};
 
@@ -216,19 +219,40 @@ export class ConfigNode {
 
 		const stateToken = this.#RED.util.generateId();
 
+		const session = { res, resolve: null };
+		authSessions.set(stateToken, session);
+
 		const handlers = {
 			on2fa: (/** @type {string} */ notificationUrl) => {
 				this.#node.debug(`2FA is required. Pausing login process with stateToken: ${stateToken}`);
 				return new Promise((resolve, reject) => {
-					pending2faResolvers.set(stateToken, resolve);
-					res.json({
-						notificationUrl, stateToken,
-						status: '2fa_required'
-					});
+					session.resolve = resolve;
+					if (!session.res.headersSent)
+						session.res.json({
+							notificationUrl, stateToken,
+							status: '2fa_required'
+						});
 					setTimeout(() => {
-						if (pending2faResolvers.has(stateToken)) {
-							pending2faResolvers.delete(stateToken);
+						if (authSessions.has(stateToken)) {
+							authSessions.delete(stateToken);
 							reject(new Error('2FA prompt timed out after 5 minutes.'));
+						}
+					}, CACHE_TTL);
+				});
+			},
+			onCaptcha: (/** @type {string} */ imageB64) => {
+				this.#node.debug(`Captcha is required. Pausing login process with stateToken: ${stateToken}`);
+				return new Promise((resolve, reject) => {
+					session.resolve = resolve;
+					if (!session.res.headersSent)
+						session.res.json({
+							imageB64, stateToken,
+							status: 'captcha_required'
+						});
+					setTimeout(() => {
+						if (authSessions.has(stateToken)) {
+							authSessions.delete(stateToken);
+							reject(new Error('Captcha prompt timed out after 5 minutes.'));
 						}
 					}, CACHE_TTL);
 				});
@@ -237,18 +261,17 @@ export class ConfigNode {
 		try {
 			const tokens = await client.miot.login(handlers);
 			this.#RED.nodes.addCredentials(this.#node.id, { ...credentials, ...tokens });
-			if (!res.headersSent)
-				res.json({
+			if (session.res && !session.res.headersSent)
+				session.res.json({
 					status: 'success',
 					message: 'Login successful! Deploy your changes.'
 				});
 		} catch (error) {
-			if (!res.headersSent)
-				res.status(401).json({ error: error.message });
-			else
-				this.#node.error(`Error during paused 2FA login: ${error.message}`);
+			this.#node.error(`Interactive login error: ${error.stack || error.message}`);
+			if (session.res && !session.res.headersSent)
+				session.res.status(401).json({ error: error.message });
 		} finally {
-			pending2faResolvers.delete(stateToken);
+			authSessions.delete(stateToken);
 		}
 	};
 
@@ -259,18 +282,35 @@ export class ConfigNode {
 	#handleAuthSubmitTicket(req, res) {
 		const { stateToken, ticket } = req.body;
 		if (!stateToken || !ticket)
-			return res.status(400).json({ error: 'State token and ticket are required.' });
-		const resolve = pending2faResolvers.get(stateToken);
-		if (resolve) {
-			this.#node.debug(`Resuming login for stateToken ${stateToken} with provided ticket.`);
+			return res.status(400).json({ error: 'Missing parameters.' });
+		const session = authSessions.get(stateToken);
+		if (session?.resolve) {
+			this.#node.debug(`Resuming login with ticket.`);
+			session.res = res;
+			const resolve = session.resolve;
+			session.resolve = null;
 			resolve(ticket);
-			pending2faResolvers.delete(stateToken);
-			res.json({
-				status: 'ticket_submitted',
-				message: 'Ticket received. Finalizing login...'
-			});
 		} else
-			res.status(408).json({ error: 'Login session expired or invalid. Please try again.' });
+			res.status(408).json({ error: 'Login session expired or invalid.' });
+	};
+
+	/**
+	 * @param {Request} req
+	 * @param {Response} res
+	 */
+	#handleAuthSubmitCaptcha(req, res) {
+		const { stateToken, captCode } = req.body;
+		if (!stateToken || !captCode)
+			return res.status(400).json({ error: 'Missing parameters.' });
+		const session = authSessions.get(stateToken);
+		if (session?.resolve) {
+			this.#node.debug(`Resuming login with captcha code.`);
+			session.res = res;
+			const resolve = session.resolve;
+			session.resolve = null;
+			resolve(captCode);
+		} else
+			res.status(408).json({ error: 'Login session expired or invalid.' });
 	};
 
 	/**
@@ -280,6 +320,7 @@ export class ConfigNode {
 	async #close(removed, done) {
 		this.#node.debug(`Closing config node ${this.#node.id} (removed: ${!!removed})`);
 		refreshPromises.delete(this.#node.id);
+		authSessions.clear();
 		const endpoints = Object.values(this.endpoint);
 		const routes = this.#RED.httpAdmin._router.stack;
 		for (let i = routes.length - 1; i >= 0; i--) {

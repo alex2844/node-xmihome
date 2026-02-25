@@ -29,10 +29,14 @@
 		},
 		"dialog": {
 			"errorLoginFailed": "Login failed",
-			"title": "Enter 2FA Verification Code",
+			"2faTitle": "Enter 2FA Verification Code",
 			"instructionsTitle": "Two-Factor Authentication is required.",
 			"instruction1": "A verification code has been sent to your registered email or phone.",
 			"instruction2": "Please enter the code below:",
+			"captchaTitle": "Enter Captcha",
+			"captchaInstructions": "Please enter the characters from the image below:",
+			"captchaInputLabel": "Captcha code",
+			"loginSuccess": "Login successful!",
 			"buttonSubmit": "Submit",
 			"buttonCancel": "Cancel"
 		}

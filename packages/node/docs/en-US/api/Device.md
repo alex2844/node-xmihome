@@ -109,38 +109,38 @@ based on the available fields in the device configuration.
 
 | Name             | Type      | Description                                                    |
 | ---------------- | --------- | -------------------------------------------------------------- |
-| `connectionType` | `string`  | The current connection type (`'miio'`, `'bluetooth'`, `'cloud'`) or `undefined` if not connected. |
+| `connectionType` | `string`  | The current connection type (`'miio'`, `'bluetooth'`, `'cloud'`) or `undefined`. |
 | `isConnected`    | `boolean` | `true` if the device is currently connected.                   |
 | `isConnecting`   | `boolean` | `true` if the device is in the process of initial connection.  |
-| `isReconnecting` | `boolean` | `true` if the device is in the process of automatic reconnection. |
-| `properties`     | `object`  | An object containing the definitions of all device properties. |
-| `actions`        | `object`  | An object containing the definitions of all device actions.    |
+| `isReconnecting` | `boolean` | `true` if the device is in the process of auto-reconnection.   |
+| `properties`     | `object`  | Definitions of all device properties.                          |
+| `actions`        | `object`  | Definitions of all device actions.                             |
 
 ## Events
 
 Instances of the `Device` class emit the following events:
 
-| Event            | Payload                                | Description                                                  |
-| ---------------- | -------------------------------------- | ------------------------------------------------------------ |
-| `connected`      | `string` (connectionType)            | Emitted when a connection to the device is successfully established. |
-| `disconnect`     | -                                      | Emitted when the device is disconnected, either by calling `disconnect()` or externally. |
-| `reconnecting`   | `{ reason: string }`                   | Emitted when an automatic reconnection process starts after an unexpected disconnect. |
-| `reconnect_failed` | `{ attempts: number, error?: string }` | Emitted when the automatic reconnection process fails after all attempts. |
+| Event                 | Payload              | Description                                        |
+| --------------------- | -------------------- | -------------------------------------------------- |
+| `connected`           | `string` (type)      | Emitted when a connection is established.          |
+| `disconnect`          | -                    | Emitted when the device is disconnected.           |
+| `reconnecting`        | `{ reason: string }` | Emitted when auto-reconnection starts.             |
+| `reconnect_failed`    | `{ attempts: num }`  | Emitted when reconnection fails after all attempts.|
+| `properties`          | `object`             | Emitted when device properties change.             |
+| `external_disconnect` | `string` (reason)    | Emitted on unexpected hardware/bus disconnection.  |
 
 ## Methods
 
 ### `connect(connectionType)`
 
 Establishes a connection to the device. The connection type is determined
-automatically if not specified. The method prioritizes the passed
-`connectionType` argument, then falls back to the client's default setting,
-and finally auto-detects based on available device data.
+automatically if not specified.
 
 **Parameters:**
 
 | Name             | Type     | Description                                                          |
 | ---------------- | -------- | -------------------------------------------------------------------- |
-| `connectionType` | `string` | (Optional) The preferred connection type (`'miio'`, `'bluetooth'`, `'cloud'`). |
+| `connectionType` | `string` | (Optional) The preferred type (`'miio'`, `'bluetooth'`, `'cloud'`). |
 
 **Returns:**
 
@@ -186,19 +186,17 @@ Gets the value of a single property.
 
 ### `getProperties(properties)`
 
-Gets the values of multiple properties. If `properties` is not provided, it
-requests all readable properties.
+Gets the values of multiple properties.
 
 **Parameters:**
 
 | Name         | Type                   | Description                                                              |
 | ------------ | ---------------------- | ------------------------------------------------------------------------ |
-| `properties` | `(string \| object)[]` | (Optional) An array of property names or property definition objects to get. |
+| `properties` | `(string \| object)[]` | (Optional) Array of properties to get.                                   |
 
 **Returns:**
 
-- `Promise<object>`: A promise that resolves to an object of
-  `{ propertyName: value, ... }`.
+- `Promise<object>`: A promise that resolves to an object of `{ key: val }`.
 
 ### `setProperty(prop, value)`
 
@@ -217,9 +215,7 @@ Sets the value of a single property.
 
 ### `callAction(action, value)`
 
-Calls a specific action on the device. This is used for operations that
-don't fit the get/set property model, such as starting a cleaning cycle on
-a vacuum.
+Calls a specific action on the device.
 
 **Parameters:**
 
@@ -238,10 +234,10 @@ Subscribes to notifications for a property's value changes.
 
 **Parameters:**
 
-| Name       | Type              | Description                                                              |
-| ---------- | ----------------- | ------------------------------------------------------------------------ |
-| `prop`     | `string \| object` | The name of the property or property definition object to subscribe to.  |
-| `callback` | `function`        | The function to be called with the new value on each change.             |
+| Name       | Type              | Description                                                  |
+| ---------- | ----------------- | ------------------------------------------------------------ |
+| `prop`     | `string \| object` | The property name or definition object to subscribe to.      |
+| `callback` | `function`        | Function called with the new value on each change.           |
 
 **Returns:**
 
@@ -253,9 +249,9 @@ Unsubscribes from notifications for a property.
 
 **Parameters:**
 
-| Name   | Type              | Description                                                                |
-| ------ | ----------------- | -------------------------------------------------------------------------- |
-| `prop` | `string \| object` | The name of the property or property definition object to unsubscribe from. |
+| Name   | Type              | Description                                                  |
+| ------ | ----------------- | ------------------------------------------------------------ |
+| `prop` | `string \| object` | The property name or definition object to unsubscribe from. |
 
 **Returns:**
 
@@ -263,15 +259,13 @@ Unsubscribes from notifications for a property.
 
 ### `startMonitoring(callback)`
 
-Starts passive monitoring of the device's advertisement packets. This is
-only available for Bluetooth devices and does not require a persistent
-connection.
+Starts passive monitoring of advertisement packets (Bluetooth only).
 
 **Parameters:**
 
 | Name       | Type       | Description                                                |
 | ---------- | ---------- | ---------------------------------------------------------- |
-| `callback` | `function` | The function to be called with the parsed advertisement data. |
+| `callback` | `function` | Function called with the parsed advertisement data.        |
 
 **Returns:**
 
@@ -287,10 +281,9 @@ Stops the passive monitoring of advertisement packets.
 
 ### `auth()`
 
-Performs device-specific authentication logic. This method is intended to be
-overridden by subclasses for devices that require special authentication
-(e.g., Mi Kettle).
+Performs device-specific authentication logic.
 
 **Returns:**
 
 - `Promise<void>`
+

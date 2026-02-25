@@ -85,10 +85,10 @@ Waits for a specific Bluetooth device to be discovered.
 
 **Parameters:**
 
-| Name  | Type           | Description                                                        |
-| ----- | -------------- | ------------------------------------------------------------------ |
-| `mac` | `string`       | The MAC address of the device to wait for.                         |
-| `ms`  | `number` \| `null` | (Optional) Maximum time to wait in milliseconds. If `null`, waits indefinitely. |
+| Name  | Type               | Description                                                                     |
+| ----- | ------------------ | ------------------------------------------------------------------------------- |
+| `mac` | `string`           | The MAC address of the device to wait for.                                      |
+| `ms`  | `number` \| `null` | (Optional) Max time to wait in ms. If `null`, waits indefinitely.               |
 
 **Returns:**
 
@@ -167,8 +167,12 @@ Releases resources, stops scanning, and disconnects all connected devices.
 
 The `Bluetooth` class emits the following events:
 
-| Event           | Payload  | Description                                        |
-| --------------- | -------- | -------------------------------------------------- |
-| `adapter`       | `object` | Emitted when Bluetooth adapter properties change.   |
-| `available`     | `object` | Emitted when a new Bluetooth device is discovered. |
-| `advertisement` | `object` | Emitted when a BLE advertisement is parsed.        |
+| Event                  | Payload  | Description                                        |
+| ---------------------- | -------- | -------------------------------------------------- |
+| `adapter`              | `object` | Emitted when Bluetooth adapter properties change.   |
+| `available`            | `object` | Emitted when any new Bluetooth device is found.    |
+| `available:dev_${id}`  | `object` | Emitted when a specific device is discovered.      |
+| `advertisement`        | `object` | Emitted when any BLE advertisement is parsed.      |
+| `advertisement:${mac}` | `object` | Emitted when a specific device sends a beacon.     |
+| `properties:${id}`     | `object` | Emitted when D-Bus properties of a device change.  |
+

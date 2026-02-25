@@ -3,7 +3,8 @@
 import { input, password, select } from '@inquirer/prompts';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { mkdir, readFile, writeFile } from 'fs/promises';
+import { mkdir, readFile, writeFile, unlink } from 'fs/promises';
+import path from 'path';
 import XiaomiMiHome from '../src/index.js';
 import { CREDENTIALS_FILE, DEVICE_CACHE_FILE, CLOUD_DEVICE_LIST_FILE, CONFIG_DIR } from '../src/paths.js';
 import { COUNTRIES, CACHE_TTL } from '../src/constants.js';
@@ -119,12 +120,28 @@ const handleLoginCommand = async (/** @type {LoginCommandArgs} */ argv) => {
 	const client = new XiaomiMiHome({ credentials: argv, logLevel });
 	const handlers = {
 		on2fa: async (/** @type {string} */ _notificationUrl) => {
-			console.warn(`\n--- TWO-FACTOR AUTHENTICATION REQUIRED ---`);
-			console.log(`A verification code has been sent to your registered email or phone.`);
+			console.warn('\n--- TWO-FACTOR AUTHENTICATION REQUIRED ---');
+			console.log('A verification code has been sent to your registered email or phone.');
 			return await input({
 				message: 'Please enter the code you received',
 				required: true
 			});
+		},
+		onCaptcha: async (/** @type {string} */ imageB64) => {
+			console.warn('\n--- CAPTCHA REQUIRED ---');
+			const base64Data = imageB64.replace(/^data:image\/\w+;base64,/, '');
+			const captchaPath = path.join(process.cwd(), 'xiaomi_captcha.jpg');
+			await writeFile(captchaPath, base64Data, 'base64');
+			console.log(`Captcha image saved to: ${captchaPath}`);
+			console.log('Please open this image file, read the characters, and enter them below.');
+			const code = await input({
+				message: 'Enter captcha code',
+				required: true
+			});
+			try {
+				await unlink(captchaPath);
+			} catch (e) {}
+			return code;
 		}
 	};
 	try {

@@ -77,3 +77,15 @@
 		<input type="text" id="xmihome-2fa-ticket-input" style="width: 100%;" autocomplete="one-time-code" />
 	</div>
 </template>
+<template id="xmihome-captcha-dialog-template">
+	<div class="form-row">
+		<p data-i18n="config.dialog.captchaInstructions" style="margin-top: 0;"></p>
+		<img id="xmihome-captcha-image" src="" />
+	</div>
+	<div class="form-row">
+		<label for="xmihome-captcha-input">
+			<i class="fa fa-keyboard-o"></i> <span data-i18n="config.dialog.captchaInputLabel"></span>
+		</label>
+		<input type="text" id="xmihome-captcha-input" style="width: 70%;" autocomplete="off" />
+	</div>
+</template>

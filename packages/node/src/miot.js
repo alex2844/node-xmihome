@@ -171,6 +171,7 @@ export default class Miot {
 	 * Выполняет вход в аккаунт Xiaomi и возвращает учетные данные.
 	 * @param {object} [handlers] - Объект с колбэками для обработки интерактивных шагов.
 	 * @param {(url: string) => Promise<string>} [handlers.on2fa] - Колбэк для получения 2FA тикета.
+	 * @param {(imageB64: string) => Promise<string>} [handlers.onCaptcha] - Колбэк для разгадывания капчи.
 	 * @returns {Promise<Omit<Credentials, 'username'|'password'>>} - Объект с полученными учетными данными.
 	 * @throws {Error} Если не удалось выполнить вход на каком-либо из этапов.
 	 */
@@ -236,11 +237,12 @@ export default class Miot {
 
 		const sign = step1Data._sign;
 		const step2Url = 'https://account.xiaomi.com/pass/serviceLoginAuth2';
-		this.client.log('debug', `Sending credentials to ${step2Url}`);
-		const step2Response = await fetch(step2Url, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent, 'Cookie': getCookieHeader() },
-			body: new URLSearchParams({
+		let step2Data;
+
+		let captCode = null;
+		for (let attempt = 0; attempt < 3; attempt++) {
+			this.client.log('debug', `Sending credentials to ${step2Url} (Attempt ${attempt + 1})`);
+			const body = new URLSearchParams({
 				user: this.credentials.username,
 				hash: crypto.createHash('md5').update(this.credentials.password).digest('hex').toUpperCase(),
 				_json: 'true',
@@ -248,13 +250,42 @@ export default class Miot {
 				callback: 'https://sts.api.io.mi.com/sts',
 				qs: '%3Fsid%3Dxiaomiio%26_json%3Dtrue',
 				_sign: sign
-			})
-		});
-		updateCookieJar(step2Response.headers);
-		this.client.log('debug', `Response status: ${step2Response.status}`);
+			});
+			if (captCode)
+				body.append('captCode', captCode);
 
-		const step2Data = this.parseJson(await step2Response.text());
-		this.client.log('debug', `Response body:`, step2Data);
+			const step2Response = await fetch(step2Url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent, 'Cookie': getCookieHeader() },
+				body
+			});
+			updateCookieJar(step2Response.headers);
+			this.client.log('debug', `Response status: ${step2Response.status}`);
+
+			step2Data = this.parseJson(await step2Response.text());
+			this.client.log('debug', `Response body:`, step2Data);
+
+			if (step2Data.captchaUrl) {
+				if (!handlers?.onCaptcha)
+					throw new Error('Captcha is required, but no "onCaptcha" handler was provided.');
+				this.client.log('debug', `Captcha required. Fetching image from ${step2Data.captchaUrl}`);
+
+				const captchaResponse = await fetch(`https://account.xiaomi.com${step2Data.captchaUrl}`, {
+					headers: { 'User-Agent': userAgent, 'Cookie': getCookieHeader() }
+				});
+				updateCookieJar(captchaResponse.headers);
+
+				const captchaBuffer = await captchaResponse.arrayBuffer();
+				const captchaBase64 = Buffer.from(captchaBuffer).toString('base64');
+				const dataUri = `data:image/jpeg;base64,${captchaBase64}`;
+
+				captCode = await handlers.onCaptcha(dataUri);
+				if (!captCode)
+					throw new Error('Captcha code was not provided. Login aborted.');
+				continue;
+			}
+			break;
+		}
 
 		if (step2Data.notificationUrl) {
 			if (!handlers?.on2fa)
