@@ -9,13 +9,16 @@ import { devices } from 'xmihome-devices';
 /** @import { Config as DeviceConfig, DiscoveredDevice } from './device.js' */
 
 /**
+ * Конфигурация авторизации Xiaomi MiCloud.
  * @typedef {Object} Credentials
- * @property {(typeof COUNTRIES)[number]} [country] Страна для облачного подключения (например, 'ru', 'cn').
- * @property {string} [username] Имя пользователя для облачного подключения.
- * @property {string} [password] Пароль для облачного подключения.
- * @property {string|number} [userId] ID пользователя Xiaomi. Если указан вместе с ssecurity и serviceToken, авторизация пропускается.
- * @property {string} [ssecurity] Ключ безопасности ssecurity. Если указан вместе с userId и serviceToken, авторизация пропускается.
- * @property {string} [serviceToken] Токен сервиса serviceToken. Если указан вместе с userId и ssecurity, авторизация пропускается.
+ * @property {(typeof COUNTRIES)[number]} [country] Код региона для API (например, 'ru', 'cn').
+ * @property {string} [username] Учетные данные для входа.
+ * @property {string} [password] Пароль (удаляется из кэша в целях безопасности после логина).
+ * @property {string} [deviceId] Идентификатор, имитирующий мобильное устройство при авторизации.
+ * @property {string|number} [userId] ID владельца аккаунта. Является частью кэшированной сессии.
+ * @property {string} [ssecurity] Строка безопасности, необходимая для подписи каждого API-запроса.
+ * @property {string} [serviceToken] Рабочий токен. Позволяет делать запросы к API, пока не истечет его срок действия.
+ * @property {string} [passToken] Токен "вечной" сессии. Позволяет прозрачно восстанавливать доступ при истечении serviceToken.
  */
 
 /**

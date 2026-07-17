@@ -162,7 +162,7 @@ export default class Miot {
 		try {
 			const data = await readFile(expandPath(this.client.config.credentialsFile), 'utf-8');
 			return JSON.parse(data);
-		} catch (error) {
+		} catch {
 			return null;
 		}
 	};
@@ -172,7 +172,7 @@ export default class Miot {
 	 * @param {object} [handlers] - Объект с колбэками для обработки интерактивных шагов.
 	 * @param {(url: string) => Promise<string>} [handlers.on2fa] - Колбэк для получения 2FA тикета.
 	 * @param {(imageB64: string) => Promise<string>} [handlers.onCaptcha] - Колбэк для разгадывания капчи.
-	 * @returns {Promise<Omit<Credentials, 'username'|'password'>>} - Объект с полученными учетными данными.
+	 * @returns {Promise<Omit<Credentials, 'password'>>} - Объект с полученными учетными данными.
 	 * @throws {Error} Если не удалось выполнить вход на каком-либо из этапов.
 	 */
 	async login(handlers) {
@@ -182,20 +182,28 @@ export default class Miot {
 		}
 		if (this.credentials.userId && this.credentials.ssecurity && this.credentials.serviceToken && this.credentials.country) {
 			this.client.log('info', 'Credentials (tokens) already available, skipping login.');
-			const { username, password, ...safeCredentials } = this.credentials;
+			const { password, ...safeCredentials } = this.credentials;
 			return safeCredentials;
 		}
 		this.client.log('info', `Attempting login for user: ${this.credentials.username}`);
 		if (!this.credentials.username)
-			throw new Error('username empty');
-		if (!this.credentials.password)
-			throw new Error('password empty');
+			throw new Error('Username is required for authentication.');
+
+		if (!this.credentials.deviceId) {
+			this.credentials.deviceId = crypto.randomBytes(8).toString('hex').toUpperCase();
+			this.client.log('info', `Generated new deviceId: ${this.credentials.deviceId}`);
+		}
 
 		let currentUrl, ssecurity, userId, serviceToken;
 		const serviceLoginUrl = 'https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true';
 		const userAgent = 'APP/com.xiaomi.mihome APPV/10.5.201';
 
 		const cookieJar = new Map();
+		cookieJar.set('deviceId', `deviceId=${this.credentials.deviceId}`);
+		if (this.credentials.userId)
+			cookieJar.set('userId', `userId=${this.credentials.userId}`);
+		if (this.credentials.passToken)
+			cookieJar.set('passToken', `passToken=${this.credentials.passToken}`);
 		const updateCookieJar = (/** @type {Headers} */ responseHeaders) => {
 			const setCookie = responseHeaders.getSetCookie?.() || [responseHeaders.get('set-cookie')];
 			if (!setCookie?.length)
@@ -209,7 +217,7 @@ export default class Miot {
 					continue;
 				const [name, ...valueParts] = cookiePair;
 				const value = valueParts.join('=');
-				if (cookie.toLowerCase().includes('max-age=0') || cookie.toLowerCase().includes('expires='))
+				if (cookie.toLowerCase().includes('max-age=0') || /expires=thu,\s*01[\s-]jan[\s-]1970/i.test(cookie))
 					cookieJar.delete(name.trim());
 				else if (name && value)
 					cookieJar.set(name.trim(), parts[0]);
@@ -232,62 +240,100 @@ export default class Miot {
 		this.client.log('debug', `Response status: ${step1Response.status}`);
 
 		const step1Data = this.parseJson(await step1Response.text());
-		if (!step1Data._sign)
-			throw new Error('Login step 1 failed: _sign not found');
 
-		const sign = step1Data._sign;
-		const step2Url = 'https://account.xiaomi.com/pass/serviceLoginAuth2';
-		let step2Data;
+		let step2Data = {};
+		if (step1Data.location && step1Data.location.startsWith('https://sts.api.io.mi.com')) {
+			this.client.log('info', 'Login step 1 returned location directly (passToken is valid). Skipping password auth.');
+			currentUrl = step1Data.location;
+			if (step1Data.ssecurity)
+				ssecurity = step1Data.ssecurity;
+		} else {
+			if (!step1Data._sign)
+				throw new Error('Login step 1 failed: _sign not found');
+			if (!this.credentials.password)
+				throw new Error('Password is required for authentication. Please run the login command to re-authenticate.');
 
-		let captCode = null;
-		for (let attempt = 0; attempt < 3; attempt++) {
-			this.client.log('debug', `Sending credentials to ${step2Url} (Attempt ${attempt + 1})`);
-			const body = new URLSearchParams({
-				user: this.credentials.username,
-				hash: crypto.createHash('md5').update(this.credentials.password).digest('hex').toUpperCase(),
-				_json: 'true',
-				sid: 'xiaomiio',
-				callback: 'https://sts.api.io.mi.com/sts',
-				qs: '%3Fsid%3Dxiaomiio%26_json%3Dtrue',
-				_sign: sign
-			});
-			if (captCode)
-				body.append('captCode', captCode);
+			const sign = step1Data._sign;
+			const step2Url = 'https://account.xiaomi.com/pass/serviceLoginAuth2';
 
-			const step2Response = await fetch(step2Url, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent, 'Cookie': getCookieHeader() },
-				body
-			});
-			updateCookieJar(step2Response.headers);
-			this.client.log('debug', `Response status: ${step2Response.status}`);
-
-			step2Data = this.parseJson(await step2Response.text());
-			this.client.log('debug', `Response body:`, step2Data);
-
-			if (step2Data.captchaUrl) {
-				if (!handlers?.onCaptcha)
-					throw new Error('Captcha is required, but no "onCaptcha" handler was provided.');
-				this.client.log('debug', `Captcha required. Fetching image from ${step2Data.captchaUrl}`);
-
-				const captchaResponse = await fetch(`https://account.xiaomi.com${step2Data.captchaUrl}`, {
-					headers: { 'User-Agent': userAgent, 'Cookie': getCookieHeader() }
+			let captCode = null;
+			for (let attempt = 0; attempt < 3; attempt++) {
+				this.client.log('debug', `Sending credentials to ${step2Url} (Attempt ${attempt + 1})`);
+				const body = new URLSearchParams({
+					user: this.credentials.username,
+					hash: crypto.createHash('md5').update(this.credentials.password).digest('hex').toUpperCase(),
+					_json: 'true',
+					sid: 'xiaomiio',
+					callback: 'https://sts.api.io.mi.com/sts',
+					qs: '%3Fsid%3Dxiaomiio%26_json%3Dtrue',
+					_sign: sign
 				});
-				updateCookieJar(captchaResponse.headers);
+				if (captCode)
+					body.append('captCode', captCode);
 
-				const captchaBuffer = await captchaResponse.arrayBuffer();
-				const captchaBase64 = Buffer.from(captchaBuffer).toString('base64');
-				const dataUri = `data:image/jpeg;base64,${captchaBase64}`;
+				const step2Response = await fetch(step2Url, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': userAgent, 'Cookie': getCookieHeader() },
+					body
+				});
+				updateCookieJar(step2Response.headers);
+				this.client.log('debug', `Response status: ${step2Response.status}`);
 
-				captCode = await handlers.onCaptcha(dataUri);
-				if (!captCode)
-					throw new Error('Captcha code was not provided. Login aborted.');
-				continue;
+				step2Data = this.parseJson(await step2Response.text());
+				this.client.log('debug', `Response body:`, step2Data);
+
+				if (step2Data.captchaUrl) {
+					if (!handlers?.onCaptcha)
+						throw new Error('Captcha is required, but no "onCaptcha" handler was provided.');
+					this.client.log('debug', `Captcha required. Fetching image from ${step2Data.captchaUrl}`);
+
+					const captchaResponse = await fetch(`https://account.xiaomi.com${step2Data.captchaUrl}`, {
+						headers: { 'User-Agent': userAgent, 'Cookie': getCookieHeader() }
+					});
+					updateCookieJar(captchaResponse.headers);
+
+					const captchaBuffer = await captchaResponse.arrayBuffer();
+					const captchaBase64 = Buffer.from(captchaBuffer).toString('base64');
+					const dataUri = `data:image/jpeg;base64,${captchaBase64}`;
+
+					captCode = await handlers.onCaptcha(dataUri);
+					if (!captCode)
+						throw new Error('Captcha code was not provided. Login aborted.');
+					continue;
+				}
+				break;
 			}
-			break;
 		}
 
-		if (step2Data.notificationUrl) {
+		if (currentUrl && !step2Data.notificationUrl && !step2Data.ssecurity) {
+			this.client.log('debug', 'Following redirect chain from Step 1 location.');
+			for (let i = 0; i < 10; i++) {
+				this.client.log('debug', `REDIRECT LOOP ${i}: Fetching URL: ${currentUrl}`);
+				const redirectResponse = await fetch(currentUrl, { redirect: 'manual', headers: { 'User-Agent': userAgent, 'Cookie': getCookieHeader() } });
+				updateCookieJar(redirectResponse.headers);
+
+				const pragma = redirectResponse.headers.get('extension-pragma');
+				if (pragma)
+					try {
+						const pragmaJson = JSON.parse(pragma);
+						if (pragmaJson.ssecurity) {
+							ssecurity = pragmaJson.ssecurity;
+							this.client.log('info', `SUCCESS: ssecurity captured: ${ssecurity}`);
+						}
+					} catch {
+						this.client.log('warn', 'Could not parse extension-pragma header', pragma);
+					}
+
+				if (redirectResponse.status >= 300 && redirectResponse.status < 400 && redirectResponse.headers.has('location'))
+					currentUrl = new URL(redirectResponse.headers.get('location'), currentUrl).toString();
+				else {
+					this.client.log('debug', `End of redirect chain at loop ${i}.`);
+					break;
+				}
+			}
+			userId = getCookieValue('userId');
+			serviceToken = getCookieValue('serviceToken');
+		} else if (step2Data.notificationUrl) {
 			if (!handlers?.on2fa)
 				throw new Error('Two-factor authentication is required, but no "on2fa" handler was provided.');
 			const context = new URL(step2Data.notificationUrl).searchParams.get('context');
@@ -370,7 +416,7 @@ export default class Miot {
 							ssecurity = pragmaJson.ssecurity;
 							this.client.log('info', `SUCCESS: ssecurity captured: ${ssecurity}`);
 						}
-					} catch (e) {
+					} catch {
 						this.client.log('warn', 'Could not parse extension-pragma header', pragma);
 					}
 
@@ -401,11 +447,17 @@ export default class Miot {
 		this.credentials.ssecurity = ssecurity;
 		this.credentials.userId = userId;
 		this.credentials.serviceToken = serviceToken;
+		this.credentials.passToken = cookieJar.get('passToken')?.replace(/^passToken=/, '') || this.credentials.passToken;
 		this.client.emit('login', this.credentials);
 
 		return {
-			userId, ssecurity, serviceToken,
-			country: this.credentials.country
+			username: this.credentials.username,
+			country: this.credentials.country,
+			deviceId: this.credentials.deviceId,
+			userId: this.credentials.userId,
+			ssecurity: this.credentials.ssecurity,
+			serviceToken: this.credentials.serviceToken,
+			passToken: this.credentials.passToken
 		};
 	};
 
@@ -416,7 +468,7 @@ export default class Miot {
 	 * @returns {Promise<object>} Ответ API в формате JSON.
 	 * @throws {Error} Если запрос завершился с ошибкой.
 	 */
-	async request(path, data) {
+	async request(path, data, isRetry = false) {
 		this.client.log('debug', `Cloud request to ${path} with data:`, data);
 		if (!this.credentials.serviceToken) {
 			this.client.log('info', 'No serviceToken found, attempting login before request');
@@ -462,8 +514,14 @@ export default class Miot {
 				let errorBody = '';
 				try {
 					errorBody = await res.text();
-				} catch (err) {}
+				} catch {}
 				this.client.log('debug', `Cloud request error body: ${errorBody}`);
+				if (res.status === 401 && !isRetry) {
+					this.client.log('info', 'Token expired (401), attempting to refresh and retry...');
+					this.credentials.serviceToken = null;
+					await this.login();
+					return await this.request(path, data, true);
+				}
 				throw new Error(`Request error with status ${res.statusText}`);
 			}
 		} catch (err) {

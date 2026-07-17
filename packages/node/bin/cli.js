@@ -41,7 +41,7 @@ const ensureConfigDir = async () => {
 const readJsonFile = async (/** @type {string} */ filePath) => {
 	try {
 		return JSON.parse(await readFile(filePath, 'utf-8'));
-	} catch (error) {
+	} catch {
 		return null;
 	}
 };
@@ -52,7 +52,12 @@ const writeJsonFile = async (/** @type {string} */ filePath, /** @type {object} 
 };
 
 const loadCredentials = () => readJsonFile(CREDENTIALS_FILE);
-const saveCredentials = (/** @type {Credentials} */ credentials) => writeJsonFile(CREDENTIALS_FILE, credentials);
+
+const saveCredentials = async (/** @type {Credentials} */ credentials) => {
+	const { password, ...safeCredentials } = credentials;
+	await writeJsonFile(CREDENTIALS_FILE, safeCredentials);
+};
+
 const loadCloudDeviceList = () => readJsonFile(CLOUD_DEVICE_LIST_FILE);
 
 const loadDeviceCache = async (/** @type {string} */ type) => {
@@ -140,7 +145,7 @@ const handleLoginCommand = async (/** @type {LoginCommandArgs} */ argv) => {
 			});
 			try {
 				await unlink(captchaPath);
-			} catch (e) {}
+			} catch {}
 			return code;
 		}
 	};
@@ -175,6 +180,9 @@ const handleDevicesCommand = async (/** @type {DevicesCommandArgs} */ argv) => {
 	}
 	console.log(`Searching for devices (type: ${type})... This may take a moment.`);
 	const client = new XiaomiMiHome({ credentials, devices, logLevel });
+	client.on('login', (/** @type {Credentials} */ newCredentials) => {
+		saveCredentials(newCredentials).catch(console.error);
+	});
 	try {
 		let finalDevices = [], cloudDevices = [], localDevices = [];
 		const searchCloud = type === 'cloud' || type === 'all';

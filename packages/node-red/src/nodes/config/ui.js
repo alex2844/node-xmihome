@@ -68,9 +68,11 @@ RED.nodes.registerType('xmihome-config', {
 			validate
 		},
 		country: { type: 'text' },
+		deviceId: { type: 'text' },
 		userId: { type: 'text' },
 		ssecurity: { type: 'text' },
-		serviceToken: { type: 'text' }
+		serviceToken: { type: 'text' },
+		passToken: { type: 'text' }
 	},
 	label: function () {
 		return this.name || 'XiaomiMiHome';

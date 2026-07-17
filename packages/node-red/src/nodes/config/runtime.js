@@ -126,13 +126,18 @@ export class ConfigNode {
 	 * @returns {XiaomiMiHome}
 	 */
 	get client() {
-		if (!this.#client)
+		if (!this.#client) {
 			this.#client = new XiaomiMiHome({
 				credentials: this.#node.credentials,
 				credentialsFile: this.#config.credentialsFile,
 				connectionType: this.#config.connectionType === 'auto' ? null : this.#config.connectionType,
 				logLevel: this.#config.debug ? 'debug' : 'none'
 			});
+			this.#client.on('login', (/** @type {Credentials} */ credentials) => {
+				this.#node.debug('Login event received, saving updated credentials...');
+				this.#RED.nodes.addCredentials(this.#node.id, { ...this.#node.credentials, ...credentials });
+			});
+		}
 		return this.#client;
 	};
 
@@ -353,9 +358,11 @@ export default function (RED) {
 			username: { type: 'text' },
 			password: { type: 'password' },
 			country: { type: 'text' },
+			deviceId: { type: 'text' },
 			userId: { type: 'text' },
 			ssecurity: { type: 'text' },
-			serviceToken: { type: 'text' }
+			serviceToken: { type: 'text' },
+			passToken: { type: 'text' }
 		}
 	});
 };
