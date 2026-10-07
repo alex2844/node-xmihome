@@ -15,6 +15,11 @@ const nodePrefix = packageJson.name?.split('-').pop();
 if (!nodePrefix)
 	throw new Error(`Could not determine node prefix from package name: ${packageJson.name}`);
 
+const externalPackages = [
+	...Object.keys(packageJson.dependencies ?? {}),
+	...Object.keys(packageJson.dependencies ?? {}).map(pkg => `${pkg}/*`)
+];
+
 /**
  * Проверяет, существует ли директория по указанному пути.
  * @param {string} dirPath - Путь к директории.
@@ -47,7 +52,7 @@ async function buildNode(nodeName) {
 			entrypoints: [runtimeSrc],
 			outdir: nodeDistDir,
 			naming: `${nodeName}.js`,
-			packages: 'external',
+			external: externalPackages,
 			target: 'node',
 			minify: true
 		});
