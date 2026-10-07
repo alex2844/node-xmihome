@@ -1,6 +1,6 @@
 import EventEmitter from 'events';
 import Miot from './miot.js';
-import { sleep } from './index.js';
+import { sleep } from './utils.js';
 import {
 	NOTIFY_POLLING_INTERVAL, RECONNECT_INITIAL_DELAY, RECONNECT_MAX_DELAY,
 	RECONNECT_FACTOR, RECONNECT_MAX_ATTEMPTS_SHORT, RECONNECT_MAX_ATTEMPTS_LONG

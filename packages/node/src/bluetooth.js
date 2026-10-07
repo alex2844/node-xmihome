@@ -1,7 +1,7 @@
 import EventEmitter from 'events';
 import MiBeacon from './mibeacon.js';
 import { UUID, GET_DEVICE_DISCOVERY_TIMEOUT } from './constants.js';
-import { createFallbackProxy } from './index.js';
+import { createFallbackProxy } from './utils.js';
 /** @import { XiaomiMiHome } from './index.js' */
 /** @import { default as Device, Config as DeviceConfig } from './device.js' */
 
