@@ -18,8 +18,8 @@ const refreshPromises = new Map();
  * Глобальный Map для хранения активных сессий авторизации.
  * Позволяет ставить логин на паузу для ввода 2FA или капчи,
  * обновляя объект ответа (res) для правильной цепочки запросов.
- * Ключ - stateToken (string), значение - { resolve, res }.
- * @type {Map<string, { resolve: ((value: string) => void) | null, res: Response }>}
+ * Ключ - stateToken (string), значение - { resolve, res, timerId }.
+ * @type {Map<string, { resolve: ((value: string) => void) | null, res: Response, timerId?: NodeJS.Timeout | null }>}
  */
 const authSessions = new Map();
 
@@ -111,14 +111,6 @@ export class ConfigNode {
 		this.#node = node;
 		this.#config = config;
 		this.#RED = RED;
-		this.endpoint['devices'] = `/xmihome/${this.#node.id}/devices`;
-		this.endpoint['auth'] = `/xmihome/${this.#node.id}/auth`;
-		this.endpoint['auth_ticket'] = `/xmihome/${this.#node.id}/auth/submit_ticket`;
-		this.endpoint['auth_captcha'] = `/xmihome/${this.#node.id}/auth/submit_captcha`;
-		this.#RED.httpAdmin.get(this.endpoint['devices'], RED.auth.needsPermission('xmihome-config.read'), this.#getDevicesHandler.bind(this));
-		this.#RED.httpAdmin.post(this.endpoint['auth'], RED.auth.needsPermission('xmihome-config.write'), this.#handleAuth.bind(this));
-		this.#RED.httpAdmin.post(this.endpoint['auth_ticket'], RED.auth.needsPermission('xmihome-config.write'), this.#handleAuthSubmitTicket.bind(this));
-		this.#RED.httpAdmin.post(this.endpoint['auth_captcha'], RED.auth.needsPermission('xmihome-config.write'), this.#handleAuthSubmitCaptcha.bind(this));
 		this.#node.on('close', this.#close.bind(this));
 	};
 
@@ -135,7 +127,8 @@ export class ConfigNode {
 			});
 			this.#client.on('login', (/** @type {Credentials} */ credentials) => {
 				this.#node.debug('Login event received, saving updated credentials...');
-				this.#RED.nodes.addCredentials(this.#node.id, { ...this.#node.credentials, ...credentials });
+				this.#node.credentials = { ...this.#node.credentials, ...credentials };
+				this.#RED.nodes.addCredentials(this.#node.id, this.#node.credentials);
 			});
 		}
 		return this.#client;
@@ -184,7 +177,7 @@ export class ConfigNode {
 	 * @param {Request} req
 	 * @param {Response} res
 	 */
-	async #getDevicesHandler(req, res) {
+	async getDevicesHandler(req, res) {
 		try {
 			const devicesPromise = this.getDevices(req.query.force === 'true');
 			await devicesPromise;
@@ -205,133 +198,12 @@ export class ConfigNode {
 	};
 
 	/**
-	 * @param {Request} req
-	 * @param {Response} res
-	 */
-	async #handleAuth(req, res) {
-		const { username, password, country } = req.body;
-		if (!username || !password || !country)
-			return res.status(400).json({ error: 'Username, password, and country are required.' });
-
-		const credentials = {
-			country, username,
-			password: (password === '__PWRD__') ? this.#node.credentials.password : password
-		};
-		const client = new XiaomiMiHome({
-			credentials,
-			logLevel: this.#config.debug ? 'debug' : 'none'
-		});
-
-		const stateToken = this.#RED.util.generateId();
-
-		const session = { res, resolve: null };
-		authSessions.set(stateToken, session);
-
-		const handlers = {
-			on2fa: (/** @type {string} */ notificationUrl) => {
-				this.#node.debug(`2FA is required. Pausing login process with stateToken: ${stateToken}`);
-				return new Promise((resolve, reject) => {
-					session.resolve = resolve;
-					if (!session.res.headersSent)
-						session.res.json({
-							notificationUrl, stateToken,
-							status: '2fa_required'
-						});
-					setTimeout(() => {
-						if (authSessions.has(stateToken)) {
-							authSessions.delete(stateToken);
-							reject(new Error('2FA prompt timed out after 5 minutes.'));
-						}
-					}, CACHE_TTL);
-				});
-			},
-			onCaptcha: (/** @type {string} */ imageB64) => {
-				this.#node.debug(`Captcha is required. Pausing login process with stateToken: ${stateToken}`);
-				return new Promise((resolve, reject) => {
-					session.resolve = resolve;
-					if (!session.res.headersSent)
-						session.res.json({
-							imageB64, stateToken,
-							status: 'captcha_required'
-						});
-					setTimeout(() => {
-						if (authSessions.has(stateToken)) {
-							authSessions.delete(stateToken);
-							reject(new Error('Captcha prompt timed out after 5 minutes.'));
-						}
-					}, CACHE_TTL);
-				});
-			}
-		};
-		try {
-			const tokens = await client.miot.login(handlers);
-			this.#RED.nodes.addCredentials(this.#node.id, { ...credentials, ...tokens });
-			if (session.res && !session.res.headersSent)
-				session.res.json({
-					status: 'success',
-					message: 'Login successful! Deploy your changes.'
-				});
-		} catch (error) {
-			this.#node.error(`Interactive login error: ${error.stack || error.message}`);
-			if (session.res && !session.res.headersSent)
-				session.res.status(401).json({ error: error.message });
-		} finally {
-			authSessions.delete(stateToken);
-		}
-	};
-
-	/**
-	 * @param {Request} req
-	 * @param {Response} res
-	 */
-	#handleAuthSubmitTicket(req, res) {
-		const { stateToken, ticket } = req.body;
-		if (!stateToken || !ticket)
-			return res.status(400).json({ error: 'Missing parameters.' });
-		const session = authSessions.get(stateToken);
-		if (session?.resolve) {
-			this.#node.debug(`Resuming login with ticket.`);
-			session.res = res;
-			const resolve = session.resolve;
-			session.resolve = null;
-			resolve(ticket);
-		} else
-			res.status(408).json({ error: 'Login session expired or invalid.' });
-	};
-
-	/**
-	 * @param {Request} req
-	 * @param {Response} res
-	 */
-	#handleAuthSubmitCaptcha(req, res) {
-		const { stateToken, captCode } = req.body;
-		if (!stateToken || !captCode)
-			return res.status(400).json({ error: 'Missing parameters.' });
-		const session = authSessions.get(stateToken);
-		if (session?.resolve) {
-			this.#node.debug(`Resuming login with captcha code.`);
-			session.res = res;
-			const resolve = session.resolve;
-			session.resolve = null;
-			resolve(captCode);
-		} else
-			res.status(408).json({ error: 'Login session expired or invalid.' });
-	};
-
-	/**
 	 * @param {boolean} removed
 	 * @param {() => void} done
 	 */
 	async #close(removed, done) {
 		this.#node.debug(`Closing config node ${this.#node.id} (removed: ${!!removed})`);
 		refreshPromises.delete(this.#node.id);
-		authSessions.clear();
-		const endpoints = Object.values(this.endpoint);
-		const routes = this.#RED.httpAdmin._router.stack;
-		for (let i = routes.length - 1; i >= 0; i--) {
-			if (routes[i].route && endpoints.includes(routes[i].route.path))
-				routes.splice(i, 1);
-		}
 		if (this.#client)
 			try {
 				await this.#client.destroy();
@@ -347,8 +219,189 @@ export class ConfigNode {
 
 /**
  * @param {NodeAPI} RED
+ * @param {Request} req
+ * @param {Response} res
+ * @returns {Promise<void>}
+ */
+async function handleAuth(RED, req, res) {
+	const { username, password, country, nodeId, debug } = req.body;
+	const resolvedNodeId = /** @type {string|undefined} */ (nodeId || req.params.nodeId);
+	if (!username || !password || !country) {
+		res.status(400).json({ error: 'Username, password, and country are required.' });
+		return;
+	}
+
+	let resolvedPassword = password;
+	if (password === '__PWRD__') {
+		const savedCreds = resolvedNodeId ? /** @type {Credentials|undefined} */ (RED.nodes.getCredentials(resolvedNodeId)) : null;
+		if (savedCreds?.password)
+			resolvedPassword = savedCreds.password;
+		else {
+			res.status(400).json({ error: 'Saved password not found. Please re-enter your password.' });
+			return;
+		}
+	}
+
+	const credentials = {
+		country, username,
+		password: resolvedPassword
+	};
+	const client = new XiaomiMiHome({
+		credentials,
+		logLevel: debug ? 'debug' : 'none'
+	});
+
+	const stateToken = RED.util.generateId();
+	const session = { res, resolve: null, timerId: null };
+	authSessions.set(stateToken, session);
+
+	const handlers = {
+		on2fa: (/** @type {string} */ notificationUrl) => {
+			RED.log.debug(`[xmihome-config] 2FA is required. Pausing login process with stateToken: ${stateToken}`);
+			return new Promise((resolve, reject) => {
+				session.resolve = resolve;
+				if (!session.res.headersSent)
+					session.res.json({
+						notificationUrl, stateToken,
+						status: '2fa_required'
+					});
+				session.timerId = setTimeout(() => {
+					if (authSessions.has(stateToken)) {
+						authSessions.delete(stateToken);
+						reject(new Error('2FA prompt timed out after 5 minutes.'));
+					}
+				}, CACHE_TTL);
+			});
+		},
+		onCaptcha: (/** @type {string} */ imageB64) => {
+			RED.log.debug(`[xmihome-config] Captcha is required. Pausing login process with stateToken: ${stateToken}`);
+			return new Promise((resolve, reject) => {
+				session.resolve = resolve;
+				if (!session.res.headersSent)
+					session.res.json({
+						imageB64,
+						stateToken,
+						status: 'captcha_required'
+					});
+				session.timerId = setTimeout(() => {
+					if (authSessions.has(stateToken)) {
+						authSessions.delete(stateToken);
+						reject(new Error('Captcha prompt timed out after 5 minutes.'));
+					}
+				}, CACHE_TTL);
+			});
+		}
+	};
+
+	try {
+		const tokens = await client.miot.login(handlers);
+		if (resolvedNodeId) {
+			const existingCreds = /** @type {Credentials} */ (RED.nodes.getCredentials(resolvedNodeId) || {});
+			RED.nodes.addCredentials(resolvedNodeId, { ...existingCreds, ...credentials, ...tokens });
+		}
+		if (session.res && !session.res.headersSent)
+			session.res.json({
+				status: 'success',
+				message: 'Login successful! Deploy your changes.',
+				tokens
+			});
+	} catch (error) {
+		RED.log.error(`[xmihome-config] Interactive login error: ${error.stack || error.message}`);
+		if (session.res && !session.res.headersSent)
+			session.res.status(401).json({ error: error.message });
+	} finally {
+		if (session.timerId)
+			clearTimeout(session.timerId);
+		authSessions.delete(stateToken);
+	}
+};
+
+/**
+ * @param {NodeAPI} RED
+ * @param {Request} req
+ * @param {Response} res
+ * @returns {void}
+ */
+function handleAuthSubmitTicket(RED, req, res) {
+	const { stateToken, ticket } = req.body;
+	if (!stateToken || !ticket) {
+		res.status(400).json({ error: 'Missing parameters.' });
+		return;
+	}
+	const session = authSessions.get(stateToken);
+	if (session?.resolve) {
+		if (session.timerId)
+			clearTimeout(session.timerId);
+		RED.log.debug('[xmihome-config] Resuming login with ticket.');
+		session.res = res;
+		const resolve = session.resolve;
+		session.resolve = null;
+		resolve(ticket);
+	} else
+		res.status(408).json({ error: 'Login session expired or invalid.' });
+};
+
+/**
+ * @param {NodeAPI} RED
+ * @param {Request} req
+ * @param {Response} res
+ * @returns {void}
+ */
+function handleAuthSubmitCaptcha(RED, req, res) {
+	const { stateToken, captCode } = req.body;
+	if (!stateToken || !captCode) {
+		res.status(400).json({ error: 'Missing parameters.' });
+		return;
+	}
+	const session = authSessions.get(stateToken);
+	if (session?.resolve) {
+		if (session.timerId)
+			clearTimeout(session.timerId);
+		RED.log.debug('[xmihome-config] Resuming login with captcha code.');
+		session.res = res;
+		const resolve = session.resolve;
+		session.resolve = null;
+		resolve(captCode);
+	} else
+		res.status(408).json({ error: 'Login session expired or invalid.' });
+};
+
+/**
+ * @param {NodeAPI} RED
+ * @param {Request} req
+ * @param {Response} res
+ * @returns {Promise<void>}
+ */
+async function handleGetDevices(RED, req, res) {
+	const nodeId = /** @type {string} */ (req.params.nodeId);
+	const node = /** @type {NodeInstance|undefined} */ (RED.nodes.getNode(nodeId));
+	if (!node?.instance) {
+		res.status(404).json({
+			devices: [],
+			loading: false,
+			error: 'Config node not found or not deployed yet',
+			timestamp: 0
+		});
+		return;
+	}
+	await node.instance.getDevicesHandler(req, res);
+};
+
+/**
+ * @param {NodeAPI} RED
  */
 export default function (RED) {
+	RED.httpAdmin.post('/xmihome/auth', RED.auth.needsPermission('flows.write'), (req, res) => { handleAuth(RED, req, res); });
+	RED.httpAdmin.post('/xmihome/:nodeId/auth', RED.auth.needsPermission('flows.write'), (req, res) => { handleAuth(RED, req, res); });
+
+	RED.httpAdmin.post('/xmihome/auth/submit_ticket', RED.auth.needsPermission('flows.write'), (req, res) => { handleAuthSubmitTicket(RED, req, res); });
+	RED.httpAdmin.post('/xmihome/:nodeId/auth/submit_ticket', RED.auth.needsPermission('flows.write'), (req, res) => { handleAuthSubmitTicket(RED, req, res); });
+
+	RED.httpAdmin.post('/xmihome/auth/submit_captcha', RED.auth.needsPermission('flows.write'), (req, res) => { handleAuthSubmitCaptcha(RED, req, res); });
+	RED.httpAdmin.post('/xmihome/:nodeId/auth/submit_captcha', RED.auth.needsPermission('flows.write'), (req, res) => { handleAuthSubmitCaptcha(RED, req, res); });
+
+	RED.httpAdmin.get('/xmihome/:nodeId/devices', RED.auth.needsPermission('flows.read'), (req, res) => { handleGetDevices(RED, req, res); });
+
 	RED.nodes.registerType('xmihome-config', function (/** @type {ConfigDef} */ config) {
 		RED.nodes.createNode(this, config);
 		const node = /** @type {NodeInstance} */ (this);

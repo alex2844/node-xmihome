@@ -17,7 +17,10 @@
 			"authSource": "Источник учетных данных",
 			"credentialsFile": "Путь к файлу",
 			"sourceManual": "Ввести вручную",
-			"sourceFile": "Использовать файл CLI"
+			"sourceFile": "Использовать файл CLI",
+			"authStatus": "Статус",
+			"authStatusAuthorized": "Авторизован",
+			"authStatusUnauthorized": "Не авторизован"
 		},
 		"tip": {
 			"credentialsFile": "Этот файл создается командой <code>xmihome login</code>."

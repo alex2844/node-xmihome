@@ -17,7 +17,10 @@
 			"authSource": "Credentials Source",
 			"credentialsFile": "Credentials File Path",
 			"sourceManual": "Enter Manually",
-			"sourceFile": "Use CLI File"
+			"sourceFile": "Use CLI File",
+			"authStatus": "Status",
+			"authStatusAuthorized": "Authorized",
+			"authStatusUnauthorized": "Not authorized"
 		},
 		"tip": {
 			"credentialsFile": "This file is created by the <code>xmihome login</code> command."
